@@ -26,6 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_cv', type=int, default=5)
     parser.add_argument('--num-policy', type=int, default=5)
     parser.add_argument('--tag', type=str, default=datetime.now().strftime('%Y%m%d_%H%M%S'))
+    parser.add_argument('--only_eval', action='store_true')
     parser.add_argument('--model', type=str, default='pointnet')
 
     args = parser.parse_args()
@@ -42,5 +43,9 @@ if __name__ == '__main__':
     logger = ExperimentLogger(args.save_dir, exist_ok=True)
     logger.save_args(args)
 
-    aug_eval.train(args, logger)
-    aug_eval.test(args, logger)
+
+    if args.only_eval:
+        aug_eval.test(args, logger)
+    else:
+        aug_eval.train(args, logger)
+        aug_eval.test(args, logger)

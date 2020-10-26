@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader
 from aug_eval.datasets import PointDA
 from utils import metrics
 from networks.PointNet import PointNetClassification
+from networks.DGCNN.DGCNN import DGCNNClassification
 
 
 def test(args, logger):
