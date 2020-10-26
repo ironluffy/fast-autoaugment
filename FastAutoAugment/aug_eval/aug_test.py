@@ -26,7 +26,13 @@ def test(args, logger):
                                    batch_size=batch_size)
 
     # Model
-    model = PointNetClassification(10)
+    if args.model == 'dgcnn':
+        model = DGCNNClassification()
+        torch.backends.cudnn.enabled = False
+    elif args.model == 'pointnet':
+        model = PointNetClassification()
+    else:
+        raise NotImplementedError
     model = nn.DataParallel(model)
     model = model.to(args.device)
     logger.log_model_architecture(model)
