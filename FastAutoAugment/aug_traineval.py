@@ -37,12 +37,12 @@ if __name__ == '__main__':
     numpy.random.seed(args.random_seed)
 
     args.save_dir = os.path.join(args.save_dir,
-                                 '{}_{}_op{}_ncv{}_npy{}_{}'.format(args.source_domain, args.target_domain,
-                                                                    args.num_op, args.num_cv,
-                                                                    args.num_policy, args.tag))
+                                 '{}_{}_{}_op{}_ncv{}_npy{}_{}'.format(args.model, args.source_domain,
+                                                                       args.target_domain,
+                                                                       args.num_op, args.num_cv,
+                                                                       args.num_policy, args.tag))
     logger = ExperimentLogger(args.save_dir, exist_ok=True)
     logger.save_args(args)
-
 
     if args.only_eval:
         aug_eval.test(args, logger)
