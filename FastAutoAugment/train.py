@@ -4,7 +4,6 @@ import sys
 sys.path.append(str(pathlib.Path(__file__).parent.parent.absolute()))
 
 import itertools
-import json
 import logging
 import math
 import os
@@ -22,39 +21,52 @@ from theconf import Config as C, ConfigArgumentParser
 from FastAutoAugment.common import get_logger, EMA, add_filehandler
 from FastAutoAugment.data import get_dataloaders
 from FastAutoAugment.lr_scheduler import adjust_learning_rate_resnet
-from FastAutoAugment.metrics import accuracy, Accumulator, CrossEntropyLabelSmooth
+from FastAutoAugment.metrics import Accumulator
+from FastAutoAugment.utils.metrics import calculate_accuracy_all
 from FastAutoAugment.networks import get_model, num_class
 from FastAutoAugment.tf_port.rmsprop import RMSpropTF
-from FastAutoAugment.aug_mixup import CrossEntropyMixUpLabelSmooth, mixup
 from warmup_scheduler import GradualWarmupScheduler
 
 logger = get_logger('Fast AutoAugment')
 logger.setLevel(logging.INFO)
 
 
-def run_epoch(model, loader, loss_fn, optimizer, desc_default='', epoch=0, writer=None, verbose=1, scheduler=None, is_master=True, ema=None, wd=0.0, tqdm_disabled=False):
+def run_epoch(model, src_loader, trg_loader, loss_fn, optimizer, desc_default='', epoch=0, writer=None, verbose=1,
+              scheduler=None,
+              is_master=True, ema=None, wd=0.0, tqdm_disabled=False, is_dc=False):
     if verbose:
-        loader = tqdm(loader, disable=tqdm_disabled)
-        loader.set_description('[%s %04d/%04d]' % (desc_default, epoch, C.get()['epoch']))
+        src_loader = tqdm(src_loader, disable=tqdm_disabled)
+        src_loader.set_description('[%s src%04d/%04d]' % (desc_default, epoch, C.get()['epoch']))
+    #     trg_loader = tqdm(trg_loader, disable=tqdm_disabled)
+    #     trg_loader.set_description('[%s trg%04d/%04d]' % (desc_default, epoch, C.get()['epoch']))
 
     params_without_bn = [params for name, params in model.named_parameters() if not ('_bn' in name or '.bn' in name)]
 
     loss_ema = None
     metrics = Accumulator()
     cnt = 0
-    total_steps = len(loader)
+    total_steps = min(len(src_loader), len(trg_loader))
     steps = 0
-    for data, label in loader:
+
+    train_pred_list = torch.zeros([0], dtype=torch.long).cuda()
+    train_label_list = torch.zeros([0], dtype=torch.long).cuda()
+    train_loss_sum = 0.0
+    for src_data, trg_data in tqdm(zip(src_loader, trg_loader)):
         steps += 1
-        data, label = data.cuda(), label.cuda()
+        src_point_clouds = src_data['point_cloud'].cuda()
+        trg_point_clouds = trg_data['point_cloud'].cuda()
+        src_labels = torch.zeros_like(src_data['label'], dtype=torch.int64).cuda()
+        trg_labels = torch.ones_like(trg_data['label'], dtype=torch.int64).cuda()
+        point_clouds = torch.cat([src_point_clouds, trg_point_clouds], dim=0)
+        labels = torch.cat([src_labels, trg_labels], dim=0)
 
         if C.get().conf.get('mixup', 0.0) <= 0.0 or optimizer is None:
-            preds = model(data)
-            loss = loss_fn(preds, label)
-        else:   # mixup
-            data, targets, shuffled_targets, lam = mixup(data, label, C.get()['mixup'])
-            preds = model(data)
-            loss = loss_fn(preds, targets, shuffled_targets, lam)
+            pred = model(point_clouds)
+            loss = loss_fn(pred, labels)
+        else:  # mixup
+            data, targets, shuffled_targets, lam = mixup(data, labels, C.get()['mixup'])
+            pred = model(data)
+            loss = loss_fn(pred, targets, shuffled_targets, lam)
             del shuffled_targets, lam
 
         if optimizer:
@@ -69,73 +81,88 @@ def run_epoch(model, loader, loss_fn, optimizer, desc_default='', epoch=0, write
             if ema is not None:
                 ema(model, (epoch - 1) * total_steps + steps)
 
-        top1, top5 = accuracy(preds, label, (1, 5))
-        metrics.add_dict({
-            'loss': loss.item() * len(data),
-            'top1': top1.item() * len(data),
-            'top5': top5.item() * len(data),
-        })
-        cnt += len(data)
+        cnt += len(pred)
         if loss_ema:
             loss_ema = loss_ema * 0.9 + loss.item() * 0.1
         else:
             loss_ema = loss.item()
-        if verbose:
-            postfix = metrics / cnt
-            if optimizer:
-                postfix['lr'] = optimizer.param_groups[0]['lr']
-            postfix['loss_ema'] = loss_ema
-            loader.set_postfix(postfix)
 
         if scheduler is not None:
             scheduler.step(epoch - 1 + float(steps) / total_steps)
 
-        del preds, loss, top1, top5, data, label
+        train_loss_sum += (loss.item() * labels.size(0))
+        train_pred_list = torch.cat([train_pred_list, pred.max(dim=1)[1]], dim=0)
+        train_label_list = torch.cat([train_label_list, labels], dim=0)
 
-    if tqdm_disabled and verbose:
-        if optimizer:
-            logger.info('[%s %03d/%03d] %s lr=%.6f', desc_default, epoch, C.get()['epoch'], metrics / cnt, optimizer.param_groups[0]['lr'])
-        else:
-            logger.info('[%s %03d/%03d] %s', desc_default, epoch, C.get()['epoch'], metrics / cnt)
+        del pred, loss, point_clouds, labels
 
-    metrics /= cnt
+    train_loss = train_loss_sum / train_label_list.size(0)
+    train_sample_accuracy, train_class_accuracy, train_accuracy_per_class = \
+        calculate_accuracy_all(pred_list=train_pred_list, label_list=train_label_list, num_class=2)
+
+    metrics.add('loss', train_loss)
+    metrics.add('top1', train_sample_accuracy)
+
     if optimizer:
-        metrics.metrics['lr'] = optimizer.param_groups[0]['lr']
+        logger.info('[%s %03d/%03d] lr=%.6f acc:%.4f', desc_default, epoch, C.get()['epoch'],
+                    optimizer.param_groups[0]['lr'], train_sample_accuracy)
+
+    # if tqdm_disabled and verbose:
+    #     if optimizer:
+    #         logger.info('[%s %03d/%03d] lr=%.6f acc:%.4f', desc_default, epoch, C.get()['epoch'],
+    #                     optimizer.param_groups[0]['lr'], train_sample_accuracy)
+    #     else:
+    #         logger.info('[%s %03d/%03d]', desc_default, epoch, C.get()['epoch'])
+
     if verbose:
         for key, value in metrics.items():
             writer.add_scalar(key, value, epoch)
     return metrics
 
 
-def train_and_eval(tag, dataroot, test_ratio=0.0, cv_fold=0, reporter=None, metric='last', save_path=None, only_eval=False, local_rank=-1, evaluation_interval=5):
+def train_and_eval(tag, dataroot, test_ratio=0.0, cv_num=5, cv_fold=0, reporter=None, metric='valid', save_path=None,
+                   only_eval=False, local_rank=-1, evaluation_interval=5, source=None, target=None, is_dc=True):
     total_batch = C.get()["batch"]
+    # print(local_rank)
     if local_rank >= 0:
         dist.init_process_group(backend='nccl', init_method='env://', world_size=int(os.environ['WORLD_SIZE']))
         device = torch.device('cuda', local_rank)
         torch.cuda.set_device(device)
 
         C.get()['lr'] *= dist.get_world_size()
-        logger.info(f'local batch={C.get()["batch"]} world_size={dist.get_world_size()} ----> total batch={C.get()["batch"] * dist.get_world_size()}')
+        logger.info(
+            f'local batch={C.get()["batch"]} world_size={dist.get_world_size()} ----> total batch={C.get()["batch"] * dist.get_world_size()}')
         total_batch = C.get()["batch"] * dist.get_world_size()
 
     is_master = local_rank < 0 or dist.get_rank() == 0
     if is_master:
-        add_filehandler(logger, args.save + '.log')
+        add_filehandler(logger, save_path[:-3] + '.log')
 
     if not reporter:
         reporter = lambda **kwargs: 0
 
     max_epoch = C.get()['epoch']
-    trainsampler, trainloader, validloader, testloader_ = get_dataloaders(C.get()['dataset'], C.get()['batch'], dataroot, test_ratio, split_idx=cv_fold, multinode=(local_rank >= 0))
+    src_trainsampler, src_trainloader, src_validloader, src_testloader_ = get_dataloaders(C.get()['dataset'],
+                                                                                          C.get()['batch'],
+                                                                                          dataroot, test_ratio, cv_num,
+                                                                                          split_idx=cv_fold,
+                                                                                          multinode=(local_rank >= 0),
+                                                                                          target=False)
+
+    trg_trainsampler, trg_trainloader, trg_validloader, trg_testloader_ = get_dataloaders(C.get()['dataset'],
+                                                                                          C.get()['batch'],
+                                                                                          dataroot, test_ratio, cv_num,
+                                                                                          split_idx=cv_fold,
+                                                                                          multinode=(local_rank >= 0),
+                                                                                          target=True)
 
     # create a model & an optimizer
-    model = get_model(C.get()['model'], num_class(C.get()['dataset']), local_rank=local_rank)
+    model = get_model(C.get()['model'], 2 if is_dc else num_class(C.get()['dataset']), local_rank=local_rank)
     model_ema = get_model(C.get()['model'], num_class(C.get()['dataset']), local_rank=-1)
     model_ema.eval()
 
-    criterion_ce = criterion = CrossEntropyLabelSmooth(num_class(C.get()['dataset']), C.get().conf.get('lb_smooth', 0))
-    if C.get().conf.get('mixup', 0.0) > 0.0:
-        criterion = CrossEntropyMixUpLabelSmooth(num_class(C.get()['dataset']), C.get().conf.get('lb_smooth', 0))
+    criterion = nn.CrossEntropyLoss()
+
     if C.get()['optimizer']['type'] == 'sgd':
         optimizer = optim.SGD(
             model.parameters(),
@@ -152,6 +179,12 @@ def train_and_eval(tag, dataroot, test_ratio=0.0, cv_fold=0, reporter=None, metr
             alpha=0.9, momentum=0.9,
             eps=0.001
         )
+    elif C.get()['optimizer']['type'] == 'adam':
+        optimizer = optim.Adam(
+            model.parameters(),
+            lr=C.get()['lr'],
+            weight_decay=5e-5
+        )
     else:
         raise ValueError('invalid optimizer type=%s' % C.get()['optimizer']['type'])
 
@@ -161,7 +194,8 @@ def train_and_eval(tag, dataroot, test_ratio=0.0, cv_fold=0, reporter=None, metr
     elif lr_scheduler_type == 'resnet':
         scheduler = adjust_learning_rate_resnet(optimizer)
     elif lr_scheduler_type == 'efficientnet':
-        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda x: 0.97 ** int((x + C.get()['lr_schedule']['warmup']['epoch']) / 2.4))
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda x: 0.97 ** int(
+            (x + C.get()['lr_schedule']['warmup']['epoch']) / 2.4))
     else:
         raise ValueError('invalid lr_schduler=%s' % lr_scheduler_type)
 
@@ -188,10 +222,10 @@ def train_and_eval(tag, dataroot, test_ratio=0.0, cv_fold=0, reporter=None, metr
 
     result = OrderedDict()
     epoch_start = 1
-    if save_path != 'test.pth':     # and is_master: --> should load all data(not able to be broadcasted)
+    if save_path != 'test.pth':  # and is_master: --> should load all data(not able to be broadcasted)
         if save_path and os.path.exists(save_path):
             logger.info('%s file found. loading...' % save_path)
-            data = torch.load(save_path)
+            data = torch.load(save_path+'.pth')
             key = 'model' if 'model' in data else 'state_dict'
 
             if 'epoch' not in data:
@@ -201,7 +235,7 @@ def train_and_eval(tag, dataroot, test_ratio=0.0, cv_fold=0, reporter=None, metr
                 if not isinstance(model, (DataParallel, DistributedDataParallel)):
                     model.load_state_dict({k.replace('module.', ''): v for k, v in data[key].items()})
                 else:
-                    model.load_state_dict({k if 'module.' in k else 'module.'+k: v for k, v in data[key].items()})
+                    model.load_state_dict({k if 'module.' in k else 'module.' + k: v for k, v in data[key].items()})
                 logger.info('optimizer.load_state_dict+')
                 optimizer.load_state_dict(data['optimizer'])
                 if data['epoch'] < C.get()['epoch']:
@@ -209,9 +243,11 @@ def train_and_eval(tag, dataroot, test_ratio=0.0, cv_fold=0, reporter=None, metr
                 else:
                     only_eval = True
                 if ema is not None:
-                    ema.shadow = data.get('ema', {}) if isinstance(data.get('ema', {}), dict) else data['ema'].state_dict()
+                    ema.shadow = data.get('ema', {}) if isinstance(data.get('ema', {}), dict) else data[
+                        'ema'].state_dict()
             del data
         else:
+            os.makedirs(save_path, exist_ok=True)
             logger.info('"%s" file not found. skip to pretrain weights...' % save_path)
             if only_eval:
                 logger.warning('model checkpoint not found. only-evaluation mode is off.')
@@ -229,16 +265,26 @@ def train_and_eval(tag, dataroot, test_ratio=0.0, cv_fold=0, reporter=None, metr
         logger.info('evaluation only+')
         model.eval()
         rs = dict()
-        rs['train'] = run_epoch(model, trainloader, criterion, None, desc_default='train', epoch=0, writer=writers[0], is_master=is_master)
+        rs['train'] = run_epoch(model, src_trainloader, trg_trainloader, criterion, None, desc_default='train', epoch=0,
+                                writer=writers[0],
+                                is_master=is_master)
 
         with torch.no_grad():
-            rs['valid'] = run_epoch(model, validloader, criterion, None, desc_default='valid', epoch=0, writer=writers[1], is_master=is_master)
-            rs['test'] = run_epoch(model, testloader_, criterion, None, desc_default='*test', epoch=0, writer=writers[2], is_master=is_master)
+            rs['valid'] = run_epoch(model, src_validloader, trg_validloader, criterion, None,
+                                    desc_default='valid', epoch=0,
+                                    writer=writers[1], is_master=is_master)
+            rs['test'] = run_epoch(model, src_testloader_, trg_testloader_, criterion, None, desc_default='*test',
+                                   epoch=0,
+                                   writer=writers[2], is_master=is_master)
             if ema is not None and len(ema) > 0:
                 model_ema.load_state_dict({k.replace('module.', ''): v for k, v in ema.state_dict().items()})
-                rs['valid'] = run_epoch(model_ema, validloader, criterion_ce, None, desc_default='valid(EMA)', epoch=0, writer=writers[1], verbose=is_master, tqdm_disabled=tqdm_disabled)
-                rs['test'] = run_epoch(model_ema, testloader_, criterion_ce, None, desc_default='*test(EMA)', epoch=0, writer=writers[2], verbose=is_master, tqdm_disabled=tqdm_disabled)
-        for key, setname in itertools.product(['loss', 'top1', 'top5'], ['train', 'valid', 'test']):
+                rs['valid'] = run_epoch(model_ema, src_validloader, trg_validloader, criterion, None,
+                                        desc_default='valid(EMA)', epoch=0,
+                                        writer=writers[1], verbose=is_master, tqdm_disabled=tqdm_disabled)
+                rs['test'] = run_epoch(model_ema, src_testloader_, trg_testloader_, criterion, None,
+                                       desc_default='*test(EMA)', epoch=0,
+                                       writer=writers[2], verbose=is_master, tqdm_disabled=tqdm_disabled)
+        for key, setname in itertools.product(['loss', 'top1'], ['train', 'valid', 'test']):
             if setname not in rs:
                 continue
             result['%s_%s' % (key, setname)] = rs[setname][key]
@@ -249,17 +295,22 @@ def train_and_eval(tag, dataroot, test_ratio=0.0, cv_fold=0, reporter=None, metr
     best_top1 = 0
     for epoch in range(epoch_start, max_epoch + 1):
         if local_rank >= 0:
-            trainsampler.set_epoch(epoch)
+            src_trainsampler.set_epoch(epoch)
+            trg_trainsampler.set_epoch(epoch)
 
         model.train()
         rs = dict()
-        rs['train'] = run_epoch(model, trainloader, criterion, optimizer, desc_default='train', epoch=epoch, writer=writers[0], verbose=(is_master and local_rank <= 0), scheduler=scheduler, ema=ema, wd=C.get()['optimizer']['decay'], tqdm_disabled=tqdm_disabled)
+        rs['train'] = run_epoch(model, src_trainloader, trg_trainloader, criterion, optimizer, desc_default='train',
+                                epoch=epoch,
+                                writer=writers[0], verbose=(is_master and local_rank <= 0), scheduler=scheduler,
+                                ema=ema, wd=C.get()['optimizer']['decay'], tqdm_disabled=tqdm_disabled)
         model.eval()
 
         if math.isnan(rs['train']['loss']):
             raise Exception('train loss is NaN.')
 
-        if ema is not None and C.get()['optimizer']['ema_interval'] > 0 and epoch % C.get()['optimizer']['ema_interval'] == 0:
+        if ema is not None and C.get()['optimizer']['ema_interval'] > 0 and epoch % C.get()['optimizer'][
+            'ema_interval'] == 0:
             logger.info(f'ema synced+ rank={dist.get_rank()}')
             if ema is not None:
                 model.load_state_dict(ema.state_dict())
@@ -271,13 +322,23 @@ def train_and_eval(tag, dataroot, test_ratio=0.0, cv_fold=0, reporter=None, metr
 
         if is_master and (epoch % evaluation_interval == 0 or epoch == max_epoch):
             with torch.no_grad():
-                rs['valid'] = run_epoch(model, validloader, criterion_ce, None, desc_default='valid', epoch=epoch, writer=writers[1], verbose=is_master, tqdm_disabled=tqdm_disabled)
-                rs['test'] = run_epoch(model, testloader_, criterion_ce, None, desc_default='*test', epoch=epoch, writer=writers[2], verbose=is_master, tqdm_disabled=tqdm_disabled)
+                rs['valid'] = run_epoch(model, src_validloader, trg_validloader, criterion, None, desc_default='valid',
+                                        epoch=epoch,
+                                        writer=writers[1], verbose=is_master, tqdm_disabled=tqdm_disabled)
+                rs['test'] = run_epoch(model, src_testloader_, trg_testloader_, criterion, None, desc_default='*test',
+                                       epoch=epoch,
+                                       writer=writers[2], verbose=is_master, tqdm_disabled=tqdm_disabled)
 
                 if ema is not None:
                     model_ema.load_state_dict({k.replace('module.', ''): v for k, v in ema.state_dict().items()})
-                    rs['valid'] = run_epoch(model_ema, validloader, criterion_ce, None, desc_default='valid(EMA)', epoch=epoch, writer=writers[1], verbose=is_master, tqdm_disabled=tqdm_disabled)
-                    rs['test'] = run_epoch(model_ema, testloader_, criterion_ce, None, desc_default='*test(EMA)', epoch=epoch, writer=writers[2], verbose=is_master, tqdm_disabled=tqdm_disabled)
+                    rs['valid'] = run_epoch(model_ema, src_validloader, trg_validloader, criterion, None,
+                                            desc_default='valid(EMA)',
+                                            epoch=epoch, writer=writers[1], verbose=is_master,
+                                            tqdm_disabled=tqdm_disabled)
+                    rs['test'] = run_epoch(model_ema, src_testloader_, trg_testloader_, criterion, None,
+                                           desc_default='*test(EMA)',
+                                           epoch=epoch, writer=writers[2], verbose=is_master,
+                                           tqdm_disabled=tqdm_disabled)
 
             logger.info(
                 f'epoch={epoch} '
@@ -286,10 +347,10 @@ def train_and_eval(tag, dataroot, test_ratio=0.0, cv_fold=0, reporter=None, metr
                 f'[test] loss={rs["test"]["loss"]:.4f} top1={rs["test"]["top1"]:.4f} '
             )
 
-            if metric == 'last' or rs[metric]['top1'] > best_top1:
+            if epoch == max_epoch or rs['valid']['top1'] > best_top1:
                 if metric != 'last':
-                    best_top1 = rs[metric]['top1']
-                for key, setname in itertools.product(['loss', 'top1', 'top5'], ['train', 'valid', 'test']):
+                    best_top1 = rs['valid']['top1']
+                for key, setname in itertools.product(['loss', 'top1'], ['train', 'valid', 'test']):
                     result['%s_%s' % (key, setname)] = rs[setname][key]
                 result['epoch'] = epoch
 
@@ -313,44 +374,10 @@ def train_and_eval(tag, dataroot, test_ratio=0.0, cv_fold=0, reporter=None, metr
                         },
                         'optimizer': optimizer.state_dict(),
                         'model': model.state_dict(),
-                        'ema': ema.state_dict() if ema is not None else None,
-                    }, save_path)
+                        # 'ema': ema.state_dict() if ema is not None else None,
+                    }, save_path+'.pth')
 
     del model
 
     result['top1_test'] = best_top1
     return result
-
-
-if __name__ == '__main__':
-    parser = ConfigArgumentParser(conflict_handler='resolve')
-    parser.add_argument('--tag', type=str, default='')
-    parser.add_argument('--dataroot', type=str, default='/data/private/pretrainedmodels', help='torchvision data folder')
-    parser.add_argument('--save', type=str, default='test.pth')
-    parser.add_argument('--cv-ratio', type=float, default=0.0)
-    parser.add_argument('--cv', type=int, default=0)
-    parser.add_argument('--local_rank', type=int, default=-1)
-    parser.add_argument('--evaluation-interval', type=int, default=5)
-    parser.add_argument('--only-eval', action='store_true')
-    args = parser.parse_args()
-
-    assert (args.only_eval and args.save) or not args.only_eval, 'checkpoint path not provided in evaluation mode.'
-
-    if not args.only_eval:
-        if args.save:
-            logger.info('checkpoint will be saved at %s' % args.save)
-        else:
-            logger.warning('Provide --save argument to save the checkpoint. Without it, training result will not be saved!')
-
-    import time
-    t = time.time()
-    result = train_and_eval(args.tag, args.dataroot, test_ratio=args.cv_ratio, cv_fold=args.cv, save_path=args.save, only_eval=args.only_eval, local_rank=args.local_rank, metric='test', evaluation_interval=args.evaluation_interval)
-    elapsed = time.time() - t
-
-    logger.info('done.')
-    logger.info('model: %s' % C.get()['model'])
-    logger.info('augmentation: %s' % C.get()['aug'])
-    logger.info('\n' + json.dumps(result, indent=4))
-    logger.info('elapsed time: %.3f Hours' % (elapsed / 3600.))
-    logger.info('top1 error in testset: %.4f' % (1. - result['top1_test']))
-    logger.info(args.save)
