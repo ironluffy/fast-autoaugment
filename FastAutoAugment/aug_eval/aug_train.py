@@ -10,7 +10,6 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from aug_eval.datasets import PointDA
 from aug_eval.aug_test import test_model
-from networks import get_model
 from utils.point_augmentations import apply_augment
 from utils import metrics
 

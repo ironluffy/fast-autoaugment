@@ -99,8 +99,9 @@ class MLP1D(Seq):
 
 
 nn_raising_config = [3, 64, 64, 128, 1024]
-nn_rotation_config = [1024*2, 512, 256, 4, 9]
-nn_translation_config = [1024*3, 1024, 512, 64, 3, 3]
+nn_rotation_config = [1024 * 2, 512, 256, 4, 9]
+nn_translation_config = [1024 * 3, 1024, 512, 64, 3, 3]
+
 
 class AugmentationModule(nn.Module):
     """
@@ -112,58 +113,32 @@ class AugmentationModule(nn.Module):
         super(AugmentationModule, self).__init__()
         self._conv_type = conv_type
 
-        if conv_type == "DENSE":
-            # per point feature extraction
-            self.nn_raising = MLP1D(nn_raising_config)
-            # shape-wise regression
-            self.nn_rotation = MLP1D(nn_rotation_config)
-            # point-wise regression
-            self.nn_translation = MLP1D(nn_translation_config)
-        else:
-            self.nn_raising = MLP(nn_raising_config)
-            self.nn_rotation = MLP(nn_rotation_config)
-            self.nn_translation = MLP(nn_translation_config)
+        # per point feature extraction
+        self.nn_raising = MLP1D(nn_raising_config)
+        # shape-wise regression
+        self.nn_rotation = MLP1D(nn_rotation_config)
+        # point-wise regression
+        self.nn_translation = MLP1D(nn_translation_config)
 
     def forward(self, data):
+        batch_size = data.size(0)
+        num_points = data.size(2)
+        F = self.nn_raising(data)
+        G, _ = F.max(-1)
+        noise_rotation = torch.randn(G.size()).to(G.device)
+        noise_translation = torch.randn(F.size()).to(F.device)
 
-        if self._conv_type == "DENSE":
-            batch_size = data.size(0)
-            num_points = data.size(2)
-            F = self.nn_raising(data)
-            G, _ = F.max(-1)
-            noise_rotation = torch.randn(G.size()).to(G.device)
-            noise_translation = torch.randn(F.size()).to(F.device)
+        feature_rotation = [noise_rotation, G]
+        feature_translation = [F, G.unsqueeze(-1).repeat((1, 1, num_points)), noise_translation]
 
-            feature_rotation = [noise_rotation, G]
-            feature_translation = [F, G.unsqueeze(-1).repeat((1, 1, num_points)), noise_translation]
+        features_rotation = torch.cat(feature_rotation, dim=1).unsqueeze(-1)
+        features_translation = torch.cat(feature_translation, dim=1)
 
-            features_rotation = torch.cat(feature_rotation, dim=1).unsqueeze(-1)
-            features_translation = torch.cat(feature_translation, dim=1)
+        M = self.nn_rotation(features_rotation).view((batch_size, 3, 3))
+        D = self.nn_translation(features_translation)
 
-            M = self.nn_rotation(features_rotation).view((batch_size, 3, 3))
-            D = self.nn_translation(features_translation).permute(0, 2, 1)
-
-            new_data = data.clone()
-            new_data.pos = D + new_data.pos @ M
-        else:
-            batch_size = data.pos.shape[0]
-            num_points = data.pos.shape[1]
-            F = self.nn_raising(data.pos.permute(0, 2, 1))
-            G, _ = F.max(-1)
-            noise_rotation = torch.randn(G.size()).to(G.device)
-            noise_translation = torch.randn(F.size()).to(F.device)
-
-            feature_rotation = [noise_rotation, G]
-            feature_translation = [F, G.unsqueeze(-1).repeat((1, 1, num_points)), noise_translation]
-
-            features_rotation = torch.cat(feature_rotation, dim=1).unsqueeze(-1)
-            features_translation = torch.cat(feature_translation, dim=1)
-
-            M = self.nn_rotation(features_rotation).view((batch_size, 3, 3))
-            D = self.nn_translation(features_translation).permute(0, 2, 1)
-
-            new_data = data.clone()
-            new_data.pos = D + new_data.pos @ M
+        new_data = data.clone()
+        new_data = D + M @ new_data
 
         return new_data
 
@@ -171,4 +146,4 @@ class AugmentationModule(nn.Module):
 if __name__ == "__main__":
     model = AugmentationModule()
     in_point = torch.randn(32, 3, 1024)
-    print(model(in_point))
+    print(model(in_point).size())
