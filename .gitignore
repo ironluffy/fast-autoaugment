@@ -8,9 +8,13 @@ __pycache__/
 
 # Distribution / packaging
 .Python
+*zip
 build/
+PointDA_data
+models
 develop-eggs/
 dist/
+aug_trained
 downloads/
 eggs/
 .eggs/
@@ -102,3 +106,9 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+/FastAutoAugment/aug_eval.sh
+/FastAutoAugment/aug_eval_107.sh
+/FastAutoAugment/aug_eval_a100.sh
+/FastAutoAugment/aug_search_107.sh
+/FastAutoAugment/aug_eval_108.sh
+/FastAutoAugment/aug_search_108.sh
