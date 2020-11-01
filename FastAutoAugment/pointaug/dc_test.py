@@ -1,13 +1,13 @@
 import torch
 import torch.nn as nn
 
-from . import models
 from datasets import PointDA
 from utils import metrics
 from torch.utils.data import DataLoader
+from networks.PointNet import PointNetClassification, PointNetClassificationV7
 
 
-def test(args, logger):
+def dc_test(args, logger):
     # Logger
     logger.change_log_file('test.log')
 
@@ -31,7 +31,7 @@ def test(args, logger):
                                    batch_size=batch_size)
 
     # Model
-    model = getattr(models, args.model)()
+    model = PointNetClassificationV7(2)
     model = nn.DataParallel(model)
     model = model.to(args.device)
     logger.log_model_architecture(model)
@@ -40,7 +40,7 @@ def test(args, logger):
 
     # ===Best Class Acc===
     # Model Load
-    load_dict = logger.load_checkpoint('Best_class_val')
+    load_dict = logger.load_checkpoint('Best_class_val_dc')
     model.module.load_state_dict(load_dict['model'])
 
     # Test Model
@@ -61,12 +61,12 @@ def test(args, logger):
 
     # ===Best Sample Acc===
     # Model Load
-    load_dict = logger.load_checkpoint('Best_sample_val')
+    load_dict = logger.load_checkpoint('Best_sample_val_dc')
     model.module.load_state_dict(load_dict['model'])
 
     # Test Model
     test_pred_list, test_label_list, test_loss_sum = \
-        test_model(model=model, dataloader=zip(source_testloader, target_testloader), criterion=criterion, device=args.device)
+        dc_test_model(model=model, dataloader=zip(source_testloader, target_testloader), criterion=criterion, device=args.device)
 
     # Calculate metric
     test_loss = test_loss_sum / test_label_list.size(0)
@@ -81,7 +81,7 @@ def test(args, logger):
                               accuracy_per_class=test_accuracy_per_class)
 
 
-def test_model(model, dataloader, criterion, device):
+def dc_test_model(model, dataloader, criterion, device):
     pred_list = torch.zeros([0], dtype=torch.long).to(device)
     label_list = torch.zeros([0], dtype=torch.long).to(device)
     loss_sum = 0.0

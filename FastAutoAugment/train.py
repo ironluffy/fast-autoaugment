@@ -33,7 +33,7 @@ logger.setLevel(logging.INFO)
 
 def run_epoch(model, src_loader, trg_loader, loss_fn, optimizer, desc_default='', epoch=0, writer=None, verbose=1,
               scheduler=None,
-              is_master=True, ema=None, wd=0.0, tqdm_disabled=False, is_dc=False):
+              is_master=True, ema=None, wd=0.0, tqdm_disabled=False):
     if verbose:
         src_loader = tqdm(src_loader, disable=tqdm_disabled)
         src_loader.set_description('[%s src%04d/%04d]' % (desc_default, epoch, C.get()['epoch']))
@@ -121,7 +121,7 @@ def run_epoch(model, src_loader, trg_loader, loss_fn, optimizer, desc_default=''
 
 
 def train_and_eval(tag, dataroot, test_ratio=0.0, cv_num=5, cv_fold=0, reporter=None, metric='valid', save_path=None,
-                   only_eval=False, local_rank=-1, evaluation_interval=5, source=None, target=None, is_dc=True):
+                   only_eval=False, local_rank=-1, evaluation_interval=5):
     total_batch = C.get()["batch"]
     # print(local_rank)
     if local_rank >= 0:
@@ -157,7 +157,7 @@ def train_and_eval(tag, dataroot, test_ratio=0.0, cv_num=5, cv_fold=0, reporter=
                                                                                           target=True)
 
     # create a model & an optimizer
-    model = get_model(C.get()['model'], 2 if is_dc else num_class(C.get()['dataset']), local_rank=local_rank)
+    model = get_model(C.get()['model'], 2, local_rank=local_rank)
     model_ema = get_model(C.get()['model'], num_class(C.get()['dataset']), local_rank=-1)
     model_ema.eval()
 
@@ -225,7 +225,7 @@ def train_and_eval(tag, dataroot, test_ratio=0.0, cv_num=5, cv_fold=0, reporter=
     if save_path != 'test.pth':  # and is_master: --> should load all data(not able to be broadcasted)
         if save_path and os.path.exists(save_path):
             logger.info('%s file found. loading...' % save_path)
-            data = torch.load(save_path+'.pth')
+            data = torch.load(save_path + '.pth')
             key = 'model' if 'model' in data else 'state_dict'
 
             if 'epoch' not in data:
@@ -375,7 +375,7 @@ def train_and_eval(tag, dataroot, test_ratio=0.0, cv_num=5, cv_fold=0, reporter=
                         'optimizer': optimizer.state_dict(),
                         'model': model.state_dict(),
                         # 'ema': ema.state_dict() if ema is not None else None,
-                    }, save_path+'.pth')
+                    }, save_path + '.pth')
 
     del model
 

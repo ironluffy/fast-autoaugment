@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torch.utils.data as data
 
-import FastAutoAugment.utils.point_cloud_utils as pcu
+import utils.point_cloud_utils as pcu
 
 idx_to_label = {0: "bathtub", 1: "bed", 2: "bookshelf", 3: "cabinet",
                 4: "chair", 5: "lamp", 6: "monitor",

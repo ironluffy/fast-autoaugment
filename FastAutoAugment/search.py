@@ -62,8 +62,7 @@ def train_model(config, dataroot, augment, cv_ratio_test, cv_num, cv_fold, save_
     C.get()['aug'] = augment
 
     result = train_and_eval(None, os.path.abspath(dataroot), cv_ratio_test, cv_num, cv_fold, save_path=save_path,
-                            only_eval=skip_exist,
-                            source=C.get()['source'], target=C.get()['target'])
+                            only_eval=skip_exist)
     return C.get()['model']['type'], cv_fold, result
 
 
@@ -154,6 +153,8 @@ if __name__ == '__main__':
     parser.add_argument('--num-policy', type=int, default=5)
     parser.add_argument('--num-search', type=int, default=100)
     parser.add_argument('--cv-ratio', type=float, default=0.4)
+    parser.add_argument('--dc_model', type=str, default='pointnetv7',
+                        choices=['pointnet', 'dgcnn', 'pointnetv5', 'pointnetv7'])
     parser.add_argument('--topk', type=int, default=8)
     parser.add_argument('--decay', type=float, default=-1)
     parser.add_argument('--per-class', action='store_true')
@@ -165,6 +166,7 @@ if __name__ == '__main__':
         logger.info('decay=%.4f' % args.decay)
         C.get()['optimizer']['decay'] = args.decay
 
+    C.get()['model']['type'] = args.dc_model
     add_filehandler(logger, os.path.join('models', '%s_%s_cv%.1f.log' % (
         C.get()['dataset'], C.get()['model']['type'], args.cv_ratio)))
     logger.info('configuration...')
@@ -278,6 +280,8 @@ if __name__ == '__main__':
 
                 final_policy = remove_deplicates(final_policy)
                 final_policy_set.extend(final_policy)
-    torch.save(final_policy_set, './aug_final/{}2{}_op{}_ncv{}_npy{}.pth'.format(C.get()['source'], C.get()['target'],
-                                                                                 args.num_op, args.num_cv,
-                                                                                 args.num_policy))
+    torch.save(final_policy_set,
+               './aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(args.dc_model, C.get()['source'],
+                                                                       C.get()['target'],
+                                                                       args.num_op, args.num_cv,
+                                                                       args.num_policy, args.num_search))

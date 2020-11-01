@@ -3,7 +3,7 @@ import torch
 import numpy
 from datetime import datetime
 import argparse
-import aug_eval
+import pointaug
 from utils.logger.ExperimentLogger import ExperimentLogger
 
 if __name__ == '__main__':
@@ -22,10 +22,6 @@ if __name__ == '__main__':
     parser.add_argument('--target_train_sampling', type=str, default='random')
     parser.add_argument('--target_val_sampling', type=str, default='fixed')
     parser.add_argument('--target_test_sampling', type=str, default='fixed')
-    parser.add_argument('--num-op', type=int, default=2)
-    parser.add_argument('--num_cv', type=int, default=5)
-    parser.add_argument('--num-policy', type=int, default=5)
-    parser.add_argument('--num-search', type=int, default=100)
     parser.add_argument('--tag', type=str, default=datetime.now().strftime('%Y%m%d_%H%M%S'))
     parser.add_argument('--only_eval', action='store_true')
     parser.add_argument('--model', type=str, default='pointnet')
@@ -37,16 +33,15 @@ if __name__ == '__main__':
     torch.random.manual_seed(args.random_seed)
     numpy.random.seed(args.random_seed)
 
-    args.save_dir = os.path.join(args.save_dir,
-                                 '{}_{}_{}_op{}_ncv{}_npy{}_{}'.format(args.model, args.source_domain,
-                                                                       args.target_domain,
-                                                                       args.num_op, args.num_cv,
-                                                                       args.num_policy, args.tag))
+    args.save_dir = os.path.join(args.save_dir, "PA",
+                                 '{}_{}_{}_{}'.format(args.model, args.source_domain, args.target_domain, args.tag))
+    os.makedirs(os.path.join(args.save_dir, '..', 'pointaug'), exist_ok=True)
+    os.makedirs(os.path.join(args.save_dir, '..', 'domain_classifier'), exist_ok=True)
     logger = ExperimentLogger(args.save_dir, exist_ok=True)
     logger.save_args(args)
 
     if args.only_eval:
-        aug_eval.test(args, logger)
+        pointaug.test(args, logger)
     else:
-        aug_eval.train(args, logger)
-        aug_eval.test(args, logger)
+        pointaug.train(args, logger)
+        pointaug.test(args, logger)

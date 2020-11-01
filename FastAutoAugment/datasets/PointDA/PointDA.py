@@ -3,7 +3,7 @@ import gdown
 import zipfile
 import torch.utils.data as data
 
-import FastAutoAugment.utils.point_cloud_utils as pcu
+import utils.point_cloud_utils as pcu
 
 from .ModelNet import ModelNet
 from .ShapeNet import ShapeNet

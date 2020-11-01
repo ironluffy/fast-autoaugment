@@ -1,11 +1,9 @@
 import torch
 
-from torch import nn
-from torch.nn import DataParallel
 from torch.nn.parallel import DistributedDataParallel
 import torch.backends.cudnn as cudnn
 
-from .PointNet import PointNetClassification, PointNetClassificationV7
+from .PointNet import PointNetClassification, PointNetClassificationV5, PointNetClassificationV7
 from .DGCNN.DGCNN import DGCNNClassification
 
 
@@ -16,8 +14,10 @@ def get_model(conf, num_class=10, local_rank=-1):
         model = PointNetClassification(num_class=num_class)
     elif name == 'dgcnn':
         model = DGCNNClassification(num_class=num_class)
-    elif name == 'pointnet_dc':
-        model = PointNetClassificationV7(num_class=2)
+    elif name == 'pointnetv5':
+        model = PointNetClassificationV5(num_class=num_class)
+    elif name == 'pointnetv7':
+        model = PointNetClassificationV7(num_class=num_class)
 
     else:
         raise NameError('no model named, %s' % name)

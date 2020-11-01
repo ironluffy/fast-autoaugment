@@ -1,5 +1,5 @@
+import os
 import tqdm
-import random
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -10,14 +10,16 @@ from utils import metrics
 from aug_eval.datasets import PointDA
 from .module import AugmentationModule
 from torch.utils.data import DataLoader
-from aug_eval.aug_test import test_model
-from networks.DGCNN.DGCNN import DGCNNClassificatio
+from .test import test_model
+from .dc_test import dc_test_model
+from .aug_test import aug_test_model
+from networks.DGCNN.DGCNN import DGCNNClassification
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from networks.PointNet import PointNetClassification, PointNetClassificationV7
 
 
 def dc_train(args, logger):
-    total_epoch = 30
+    total_epoch = 100
     lr = 1e-3
     weight_decay = 5e-5
     batch_size = args.batch_size
@@ -27,7 +29,6 @@ def dc_train(args, logger):
     domain_classifier = PointNetClassificationV7(2)
     domain_classifier = nn.DataParallel(domain_classifier)
     domain_classifier = domain_classifier.to(args.device)
-
 
     # Dataset
     source_trainset = PointDA(root=args.data_dir, domain=args.source_domain, partition='train',
@@ -54,7 +55,6 @@ def dc_train(args, logger):
     target_valloader = DataLoader(target_valset, num_workers=args.num_workers,
                                   batch_size=batch_size)
 
-
     # Optimizer / Scheduler / Loss
     optimizer = optim.Adam(domain_classifier.parameters(), lr=lr, weight_decay=weight_decay)
     scheduler = CosineAnnealingLR(optimizer, total_epoch)
@@ -64,7 +64,7 @@ def dc_train(args, logger):
     source_best_val_sample_acc = source_best_val_class_acc = 0.0
 
     for cur_epoch in range(total_epoch):
-        model.train()
+        domain_classifier.train()
 
         train_pred_list = torch.zeros([0], dtype=torch.long).to(args.device)
         train_label_list = torch.zeros([0], dtype=torch.long).to(args.device)
@@ -96,8 +96,8 @@ def dc_train(args, logger):
 
         # Validation
         val_pred_list, val_label_list, val_loss_sum = \
-            test_model(model=domain_classifier, dataloader=zip(source_valloader, target_valloader),
-                       criterion=criterion, device=args.device)
+            dc_test_model(model=domain_classifier, dataloader=zip(source_valloader, target_valloader),
+                          criterion=criterion, device=args.device)
 
         # Calculate metric
         val_loss = val_loss_sum / val_label_list.size(0)
@@ -114,10 +114,8 @@ def dc_train(args, logger):
         # logger.save_checkpoint(checkpoint=save_dict, tag=cur_epoch)
         if val_sample_accuracy > source_best_val_sample_acc:
             source_best_val_sample_acc = val_sample_accuracy
-            logger.save_checkpoint(checkpoint=save_dict, tag='Best_sample_dc')
-        if val_class_accuracy > source_best_val_class_acc:
-            source_best_val_class_acc = val_class_accuracy
-            logger.save_checkpoint(checkpoint=save_dict, tag='Best_class_dc')
+            torch.save(save_dict, os.path.join(logger.save_root, '..', 'domain_classifier',
+                                               '{}_{}.pth'.format(args.source_domain, args.target_domain)))
 
         # Logging
         logger.log_epoch(epoch=cur_epoch, total_epoch=total_epoch)
@@ -131,15 +129,18 @@ def dc_train(args, logger):
                                   accuracy_per_class=val_accuracy_per_class)
 
         logger.log_tensorlog(epoch=cur_epoch, log_dict={
-            'Train/class_accuracy': train_class_accuracy,
-            'Train/sample_accuracy': train_sample_accuracy,
-            'Train/loss': train_loss,
-            'Val/class_accuracy': val_class_accuracy,
-            'Val/sample_accuracy': val_sample_accuracy,
-            'Val/loss': val_loss,
-            'Val/best_class_accuracy': source_best_val_class_acc,
-            'Val/best_sample_accuracy': source_best_val_sample_acc,
+            'DC/Train/class_accuracy': train_class_accuracy,
+            'DC/Train/sample_accuracy': train_sample_accuracy,
+            'DC/Train/loss': train_loss,
+            'DC/Val/class_accuracy': val_class_accuracy,
+            'DC/Val/sample_accuracy': val_sample_accuracy,
+            'DC/Val/loss': val_loss,
+            'DC/Val/best_class_accuracy': source_best_val_class_acc,
+            'DC/Val/best_sample_accuracy': source_best_val_sample_acc,
         })
+
+    print('Training finished: domain classifier')
+    del domain_classifier
 
 
 def aug_train(args, logger):
@@ -147,46 +148,41 @@ def aug_train(args, logger):
     lr = 1e-3
     weight_decay = 5e-5
     batch_size = args.batch_size
-    num_class = 10
     num_points = 1024
+    num_class = 2
 
     aug_model = AugmentationModule()
     aug_model = nn.DataParallel(aug_model)
     aug_model = aug_model.to(args.device)
 
     domain_classifier = PointNetClassificationV7(2)
+    if not os.path.isfile(os.path.join(logger.save_root, '..', 'domain_classifier',
+                                       '{}_{}.pth'.format(args.source_domain, args.target_domain))):
+        dc_train(args, logger)
+    ckpt = torch.load(os.path.join(logger.save_root, '..', 'domain_classifier',
+                                   '{}_{}.pth'.format(args.source_domain, args.target_domain)))
+    print('Loaded: Domain classifier')
+    domain_classifier.load_state_dict(ckpt['model'])
     domain_classifier = nn.DataParallel(domain_classifier)
-    domain_classifier = domain_classifier.to(args.device)
-
+    domain_classifier = domain_classifier.to(args.device).eval()
 
     # Dataset
     source_trainset = PointDA(root=args.data_dir, domain=args.source_domain, partition='train',
                               num_points=num_points, sampling_method=args.source_train_sampling, download=True)
     source_valset = PointDA(root=args.data_dir, domain=args.source_domain, partition='val',
                             num_points=num_points, sampling_method=args.source_val_sampling, download=True)
-    target_trainset = PointDA(root=args.data_dir, domain=args.target_domain, partition='train',
-                              num_points=num_points, sampling_method=args.target_train_sampling, download=True)
-    target_valset = PointDA(root=args.data_dir, domain=args.target_domain, partition='val',
-                            num_points=num_points, sampling_method=args.target_val_sampling, download=True)
 
     logger.log_dataset(source_trainset)
-    logger.log_dataset(target_trainset)
     logger.log_dataset(source_valset)
-    logger.log_dataset(target_valset)
 
     # DataLoader
     source_trainloader = DataLoader(source_trainset, num_workers=args.num_workers,
                                     batch_size=batch_size, shuffle=True)
     source_valloader = DataLoader(source_valset, num_workers=args.num_workers,
                                   batch_size=batch_size)
-    target_trainloader = DataLoader(target_trainset, num_workers=args.num_workers,
-                                    batch_size=batch_size, shuffle=True)
-    target_valloader = DataLoader(target_valset, num_workers=args.num_workers,
-                                  batch_size=batch_size)
-
 
     # Optimizer / Scheduler / Loss
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    optimizer = optim.Adam(aug_model.parameters(), lr=lr, weight_decay=weight_decay)
     scheduler = CosineAnnealingLR(optimizer, total_epoch)
     criterion = nn.CrossEntropyLoss()
 
@@ -194,7 +190,7 @@ def aug_train(args, logger):
     source_best_val_sample_acc = source_best_val_class_acc = 0.0
 
     for cur_epoch in range(total_epoch):
-        model.train()
+        aug_model.train()
 
         train_pred_list = torch.zeros([0], dtype=torch.long).to(args.device)
         train_label_list = torch.zeros([0], dtype=torch.long).to(args.device)
@@ -202,10 +198,10 @@ def aug_train(args, logger):
         for data in tqdm(source_trainloader):
             optimizer.zero_grad()
             point_clouds = data['point_cloud'].to(args.device)
-            point_clouds = aug(point_clouds)
-            labels = data['label'].to(args.device)
+            point_clouds = aug_model(point_clouds)
+            labels = torch.ones_like(data['label'], dtype=torch.int64).to(args.device)
 
-            pred = model(point_clouds)
+            pred = domain_classifier(point_clouds)
 
             loss = criterion(pred, labels)
             loss.backward()
@@ -224,7 +220,8 @@ def aug_train(args, logger):
 
         # Validation
         val_pred_list, val_label_list, val_loss_sum = \
-            test_model(model=model, dataloader=source_valloader, criterion=criterion, device=args.device)
+            aug_test_model(model=domain_classifier, aug_model=aug_model, dataloader=source_valloader,
+                           criterion=criterion, device=args.device)
 
         # Calculate metric
         val_loss = val_loss_sum / val_label_list.size(0)
@@ -234,17 +231,15 @@ def aug_train(args, logger):
         # Save Checkpoint
         save_dict = {
             'epoch': cur_epoch,
-            'model': model.module.state_dict(),
+            'model': aug_model.module.state_dict(),
             'optimizer': optimizer,
             'scheduler': scheduler,
         }
         logger.save_checkpoint(checkpoint=save_dict, tag=cur_epoch)
         if val_sample_accuracy > source_best_val_sample_acc:
             source_best_val_sample_acc = val_sample_accuracy
-            logger.save_checkpoint(checkpoint=save_dict, tag='Best_sample_val')
-        if val_class_accuracy > source_best_val_class_acc:
-            source_best_val_class_acc = val_class_accuracy
-            logger.save_checkpoint(checkpoint=save_dict, tag='Best_class_val')
+            torch.save(save_dict, os.path.join(logger.save_root, '..', 'pointaug',
+                                               '{}_{}.pth'.format(args.source_domain, args.target_domain)))
 
         # Logging
         logger.log_epoch(epoch=cur_epoch, total_epoch=total_epoch)
@@ -268,6 +263,10 @@ def aug_train(args, logger):
             'Val/best_sample_accuracy': source_best_val_sample_acc,
         })
 
+    print("Training finished: Augmentation model")
+    del domain_classifier
+    del aug_model
+
 
 def train(args, logger):
     total_epoch = args.epoch
@@ -277,8 +276,18 @@ def train(args, logger):
     num_class = 10
     num_points = 1024
 
-    aug_load = torch.load('aug_final/{}2{}.pth'.format(args.source_domain, args.target_domain))
-    aug = Augmentation(aug_load)
+    aug_model = AugmentationModule()
+
+    if not os.path.isfile(os.path.join(logger.save_root, '..', 'pointaug',
+                                       '{}_{}.pth'.format(args.source_domain, args.target_domain))):
+        aug_train(args, logger)
+    ckpt = torch.load(
+        os.path.join(logger.save_root, '..', 'pointaug', '{}_{}.pth'.format(args.source_domain, args.target_domain)))
+    print("Loaded: augmentation model")
+    aug_model.load_state_dict(ckpt['model'])
+    aug_model = nn.DataParallel(aug_model)
+    aug_model = aug_model.to(args.device).eval()
+    total_epoch = 1
 
     # Dataset
     source_trainset = PointDA(root=args.data_dir, domain=args.source_domain, partition='train',
@@ -324,7 +333,8 @@ def train(args, logger):
         for data in tqdm(source_trainloader):
             optimizer.zero_grad()
             point_clouds = data['point_cloud'].to(args.device)
-            point_clouds = aug(point_clouds)
+            with torch.no_grad():
+                point_clouds = aug_model(point_clouds)
             labels = data['label'].to(args.device)
 
             pred = model(point_clouds)
