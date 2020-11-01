@@ -237,7 +237,6 @@ def sparse(point_clouds, level=0.6, random_range=0.3):
     augmented_point_clouds = torch.zeros([0], dtype=torch.float32, device=device)
     for idx in range(B):
         point_cloud = point_clouds[idx, :].unsqueeze(0)
-        pcu.visualize(point_cloud)
         random_index = np.random.randint(N)
         view_point = point_cloud[:, :, random_index].unsqueeze(2)
         distance = pcu.get_distance(point_cloud.sub(view_point))
@@ -246,12 +245,10 @@ def sparse(point_clouds, level=0.6, random_range=0.3):
         part_point_cloud = point_cloud.transpose(2, 1)
         part_point_cloud = part_point_cloud[mask_f, :].unsqueeze(0).transpose(2, 1)
         part_point_cloud = pcu.jitter(part_point_cloud, sigma=0.02, clip=0.05)
-        pcu.visualize(part_point_cloud)
         point_cloud, _ = pcu.random_point_sample(point_cloud, num_points=N - part_point_cloud.size(2))
         point_cloud = torch.cat([point_cloud, part_point_cloud], dim=2)
         point_cloud = pcu.point_permutate(point_cloud)
         augmented_point_clouds = torch.cat([augmented_point_clouds, point_cloud], dim=0)
-        pcu.visualize(point_cloud)
     augmented_point_clouds = pcu.normalize(augmented_point_clouds)
     return augmented_point_clouds
 
