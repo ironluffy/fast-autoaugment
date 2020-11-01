@@ -133,7 +133,6 @@ def naive_point_mix_up(point_clouds, mixup_param=1.0, random_range=0.3):
             mixed_point_clouds = torch.cat([mixed_point_clouds, mixed_pc], dim=0)
             continue
 
-
         point_cloud_a, _ = pcu.random_point_sample(point_clouds[idx, :].unsqueeze(0), int(num_pts_a[idx]))
         point_cloud_b, _ = pcu.random_point_sample(shuffled_pc[idx, :].unsqueeze(0), int(num_pts_b[idx]))
         mixed_pc = torch.cat((point_cloud_a, point_cloud_b), 2)
@@ -231,6 +230,32 @@ def squeeze_sphere(point_clouds, min_squeeze_param=0.6, random_range=0.3):
     return augmented_point_clouds
 
 
+def sparse(point_clouds, level=0.6, random_range=0.3):
+    B, C, N = point_clouds.shape
+    device = point_clouds.device
+    min_rad = level * (1 - random_range)
+    augmented_point_clouds = torch.zeros([0], dtype=torch.float32, device=device)
+    for idx in range(B):
+        point_cloud = point_clouds[idx, :].unsqueeze(0)
+        pcu.visualize(point_cloud)
+        random_index = np.random.randint(N)
+        view_point = point_cloud[:, :, random_index].unsqueeze(2)
+        distance = pcu.get_distance(point_cloud.sub(view_point))
+        max_rad = min_rad + random_range
+        mask_f = (distance < np.random.uniform(min_rad, max_rad))
+        part_point_cloud = point_cloud.transpose(2, 1)
+        part_point_cloud = part_point_cloud[mask_f, :].unsqueeze(0).transpose(2, 1)
+        part_point_cloud = pcu.jitter(part_point_cloud, sigma=0.02, clip=0.05)
+        pcu.visualize(part_point_cloud)
+        point_cloud, _ = pcu.random_point_sample(point_cloud, num_points=N - part_point_cloud.size(2))
+        point_cloud = torch.cat([point_cloud, part_point_cloud], dim=2)
+        point_cloud = pcu.point_permutate(point_cloud)
+        augmented_point_clouds = torch.cat([augmented_point_clouds, point_cloud], dim=0)
+        pcu.visualize(point_cloud)
+    augmented_point_clouds = pcu.normalize(augmented_point_clouds)
+    return augmented_point_clouds
+
+
 def equalize(point_clouds, level):
     return point_clouds
 
@@ -249,12 +274,13 @@ def augment_list(for_autoaug=True):  # 16 oeprations and their ranges
         (random_crop_plane, 0, 1),
         (random_crop_sphere, 0, 1),
         (random_crop_sphere_reverse, 0, 1),
-        (naive_point_mix_up, 0, 1),
-        (point_mix_up, 0, 1),
+        (naive_point_mix_up, 0, 0.5),
+        (point_mix_up, 0, 0.5),
         (squeeze_xy, 0, 1),
         (squeeze_z, 0, 1),
         (squeeze_sphere, 0, 1),
         (equalize, 0, 1),
+        (sparse, 0, 1)
     ]
     if for_autoaug:
         l += [
