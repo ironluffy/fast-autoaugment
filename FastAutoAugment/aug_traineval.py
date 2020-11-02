@@ -11,6 +11,8 @@ if __name__ == '__main__':
     parser.add_argument('--save_dir', default='aug_trained', type=str)
     parser.add_argument('--data_dir', default='..', type=str)
     parser.add_argument('--random_seed', default=0, type=int)
+    parser.add_argument('--dc_model', type=str, default='pointnetv7',
+                        choices=['pointnet', 'dgcnn', 'pointnetv5', 'pointnetv7'])
     parser.add_argument('--source_domain', type=str, choices=['modelnet', 'scannet', 'shapenet'])
     parser.add_argument('--target_domain', type=str, choices=['modelnet', 'scannet', 'shapenet'])
     parser.add_argument('--num_workers', type=int, default=0)
