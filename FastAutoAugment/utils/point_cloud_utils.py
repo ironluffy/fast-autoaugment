@@ -241,5 +241,3 @@ def occlude_sampling_viewpoint(point_cloud, num_points=1024, viewpoint_rad=0.7, 
         new_point_cloud = torch.cat([new_point_cloud, jitter(temp_point_cloud)], dim=2)
     new_point_cloud = normalize(new_point_cloud)
     return new_point_cloud
-
-

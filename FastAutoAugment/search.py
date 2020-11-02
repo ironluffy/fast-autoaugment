@@ -240,7 +240,7 @@ if __name__ == '__main__':
 
     final_policy_set = []
     total_computation = 0
-    reward_attr = 'top1_valid'  # top1_valid or minus_loss
+    reward_attr = 'minus_loss'  # top1_valid or minus_loss
     for _ in range(1):  # run multiple times.
         for cv_fold in range(cv_num):
             name = "search_%s_%s_fold%d_ratio%.1f" % (
