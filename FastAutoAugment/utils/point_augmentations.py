@@ -237,9 +237,6 @@ def sparse(point_clouds, level=0.6, random_range=0.3):
     augmented_point_clouds = torch.zeros([0], dtype=torch.float32, device=device)
     for idx in range(B):
         point_cloud = point_clouds[idx, :].unsqueeze(0)
-        if point_cloud.size(0) == 0:
-            augmented_point_clouds = torch.cat([augmented_point_clouds, point_cloud], dim=0)
-            continue
         random_index = np.random.randint(N)
         view_point = point_cloud[:, :, random_index].unsqueeze(2)
         distance = pcu.get_distance(point_cloud.sub(view_point))
