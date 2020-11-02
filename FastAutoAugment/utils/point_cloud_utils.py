@@ -69,8 +69,6 @@ def random_point_sample(point_cloud, num_points, seed=None):
     if seed is not None:
         np.random.seed(seed=seed)
     random_sample_indices = torch.tensor([np.random.choice(N, num_points, replace=False) for b in range(B)]).to(device)
-    if B == 0:
-        print(point_cloud.size())
     batch_indices = torch.stack([torch.arange(B)] * num_points, dim=1).to(device)
     random_samples = point_cloud[batch_indices, :, random_sample_indices].permute(0, 2, 1)
     return random_samples, random_sample_indices
