@@ -135,10 +135,10 @@ def train(args, logger):
 
         # Validation
         val_pred_list, val_label_list, val_loss_sum = \
-            test_model(model=model, dataloader=source_valloader, criterion=criterion, device=args.device)
+            test_model(model=model, aug_model=aug, dataloader=source_valloader, criterion=criterion, device=args.device)
 
         trg_test_pred_list, trg_test_label_list, trg_test_loss_sum = \
-            test_model(model=model, dataloader=target_testloader, criterion=criterion, device=args.device)
+            test_model(model=model, aug_model=None, dataloader=target_testloader, criterion=criterion, device=args.device)
 
         # Calculate metric
         val_loss = val_loss_sum / val_label_list.size(0)

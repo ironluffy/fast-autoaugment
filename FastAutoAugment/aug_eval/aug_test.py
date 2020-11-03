@@ -83,7 +83,7 @@ def test(args, logger):
                               accuracy_per_class=test_accuracy_per_class)
 
 
-def test_model(model, dataloader, criterion, device):
+def test_model(model, aug_model, dataloader, criterion, device):
     pred_list = torch.zeros([0], dtype=torch.long).to(device)
     label_list = torch.zeros([0], dtype=torch.long).to(device)
     loss_sum = 0.0
@@ -91,6 +91,9 @@ def test_model(model, dataloader, criterion, device):
         model.eval()
         for data in dataloader:
             point_clouds = data['point_cloud'].to(device)
+            with torch.no_grad():
+                if aug_model is not None:
+                    point_clouds = aug_model(point_clouds)
             labels = data['label'].to(device)
 
             pred = model(point_clouds)
