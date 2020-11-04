@@ -27,8 +27,8 @@ class Augmentation(object):
         for _ in range(1):
             policy = random.choice(self.policies)
             for name, pr, level in policy:
-                if random.random() > pr:
-                    continue
+                # if random.random() > pr:
+                #     continue
                 pnt = apply_augment(pnt, name, level)
                 if pnt.size(0) != org_size:
                     print(name)
