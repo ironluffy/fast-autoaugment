@@ -47,7 +47,7 @@ def test(args, logger):
 
     # Test Model
     test_pred_list, test_label_list, test_loss_sum = \
-        test_model(model=model, dataloader=target_testloader, criterion=criterion, device=args.device)
+        test_model(model=model, aug_model=None, dataloader=target_testloader, criterion=criterion, device=args.device)
 
     # Calculate metric
     test_loss = test_loss_sum / test_label_list.size(0)
@@ -68,7 +68,7 @@ def test(args, logger):
 
     # Test Model
     test_pred_list, test_label_list, test_loss_sum = \
-        test_model(model=model, dataloader=target_testloader, criterion=criterion, device=args.device)
+        test_model(model=model, aug_model=None, dataloader=target_testloader, criterion=criterion, device=args.device)
 
     # Calculate metric
     test_loss = test_loss_sum / test_label_list.size(0)
