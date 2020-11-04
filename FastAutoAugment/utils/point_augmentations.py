@@ -125,8 +125,8 @@ def naive_point_mix_up(point_clouds, level=1.0, random_range=0.3):
     lam = (1 - random_range) * level + torch.FloatTensor(B).uniform_(0, random_range)
     lam = lam.to(device)
 
-    num_pts_a = torch.round(lam * N)
-    num_pts_b = N - torch.round(lam * N)
+    num_pts_b = torch.round(lam * N)
+    num_pts_a = N - torch.round(lam * N)
 
     mixed_point_clouds = torch.zeros([0], dtype=torch.float32).to(device)
     for idx in range(B):
