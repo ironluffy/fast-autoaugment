@@ -356,7 +356,6 @@ def augment_list(for_autoaug=True):  # 16 oeprations and their ranges
 
 
 augment_dict = {fn.__name__: (fn, v1, v2) for fn, v1, v2 in augment_list()}
-all_augment = [[(fn, random.random(), random.random()) for fn, v1, v2 in augment_list()]]
 
 
 def get_augment(name):

@@ -1,10 +1,12 @@
 import os
 import torch
 import numpy
+import random
 from datetime import datetime
 import argparse
 import aug_eval
 from utils.logger.ExperimentLogger import ExperimentLogger
+from utils.point_augmentations import augment_list
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -51,6 +53,10 @@ if __name__ == '__main__':
                                                                            args.num_policy, args.tag))
     logger = ExperimentLogger(args.save_dir, exist_ok=True)
     logger.save_args(args)
+
+    random.seed(int(args.tag))
+    all_augment = [random.sample([(fn, random.random(), random.random()) for fn, v1, v2 in augment_list()],3)]
+    args.all_augment =all_augment
 
     if args.only_eval:
         aug_eval.test(args, logger)

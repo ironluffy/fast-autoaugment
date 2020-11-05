@@ -1,6 +1,5 @@
 import os
 import tqdm
-import random
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -11,7 +10,7 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from aug_eval.datasets import PointDA
 from aug_eval.aug_test import test_model
-from utils.point_augmentations import apply_augment, all_augment
+from utils.point_augmentations import apply_augment, augment_list
 from utils import metrics
 
 from networks.PointNet import PointNetClassification
@@ -27,8 +26,6 @@ class Augmentation(object):
         for _ in range(1):
             policy = random.choice(self.policies)
             for name, pr, level in policy:
-                if random.random() > pr:
-                    continue
                 pnt = apply_augment(pnt, name, level)
         return pnt
 
@@ -42,7 +39,7 @@ def train(args, logger):
     num_points = 1024
 
     if args.aug_all:
-        aug = all_augment
+        aug = args.all_augment
     else:
         if os.path.isfile(
                 'aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(args.dc_model, args.source_domain,
