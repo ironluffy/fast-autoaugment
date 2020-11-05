@@ -115,7 +115,7 @@ def random_crop_sphere_reverse(point_clouds, level=0.6, random_range=0.1):
     return cropped_point_clouds
 
 
-def naive_point_mix_up(point_clouds, level=1.0, random_range=0.1):
+def naive_point_mix_up(point_clouds, level=1.0, random_range=0.3):
     B, _, N = point_clouds.shape
     device = point_clouds.device
 
@@ -125,8 +125,8 @@ def naive_point_mix_up(point_clouds, level=1.0, random_range=0.1):
     lam = (1 - random_range) * level + torch.FloatTensor(B).uniform_(0, random_range)
     lam = lam.to(device)
 
-    num_pts_b = torch.round(lam * N)
     num_pts_a = N - torch.round(lam * N)
+    num_pts_b = torch.round(lam * N)
 
     mixed_point_clouds = torch.zeros([0], dtype=torch.float32).to(device)
     for idx in range(B):
@@ -277,10 +277,44 @@ def sparse(point_clouds, level=0.6, random_range=0.1):
         if part_point_cloud.size(2) == N:
             augmented_point_clouds = torch.cat([augmented_point_clouds, part_point_cloud], dim=0)
         else:
-            point_cloud, _ = pcu.random_point_sample(point_cloud, num_points=N-part_point_cloud.size(2))
+            point_cloud, _ = pcu.random_point_sample(point_cloud, num_points=N - part_point_cloud.size(2))
             point_cloud = torch.cat([point_cloud, part_point_cloud], dim=2)
             point_cloud = pcu.point_permutate(point_cloud)
             augmented_point_clouds = torch.cat([augmented_point_clouds, point_cloud], dim=0)
+
+    augmented_point_clouds = pcu.normalize(augmented_point_clouds)
+
+    return augmented_point_clouds
+
+
+def global_sparse(point_clouds, level=0.6, random_range=0.1):
+    B, C, N = point_clouds.shape
+    device = point_clouds.device
+    min_param = level * (0.9 - random_range) + 0.1
+    augmented_point_clouds = torch.zeros([0], dtype=torch.float32, device=device)
+
+    lam = torch.FloatTensor(B, 1).uniform_(min_param, min_param + random_range).to(device)
+    num_pts_a = N - torch.round(lam * N)
+    num_pts_b = torch.round(lam * N)
+
+    for idx in range(B):
+        if num_pts_a[idx] == N:
+            point_cloud = point_clouds[idx, :]
+            augmented_point_clouds = torch.cat([augmented_point_clouds, point_cloud], dim=0)
+            continue
+
+        temp_point_cloud = torch.zeros([0], dtype=torch.float32, device=device)
+        part_point_cloud, _ = pcu.random_point_sample(point_clouds[idx, :].unsqueeze(0), int(num_pts_a[idx]))
+
+        while True:
+            temp_point_cloud = torch.cat([temp_point_cloud, part_point_cloud], dim=2)
+            if temp_point_cloud.size(-1) > num_pts_b[idx]:
+                break
+
+        temp_point_cloud, _ = pcu.random_point_sample(temp_point_cloud, int(num_pts_b[idx]))
+        point_cloud = torch.cat([temp_point_cloud, part_point_cloud], dim=2)
+        point_cloud = pcu.point_permutate(point_cloud)
+        augmented_point_clouds = torch.cat([augmented_point_clouds, point_cloud], dim=0)
 
     augmented_point_clouds = pcu.normalize(augmented_point_clouds)
 
@@ -311,7 +345,8 @@ def augment_list(for_autoaug=True):  # 16 oeprations and their ranges
         (squeeze_z, 0, 0.25),
         (squeeze_sphere, 0, 0.25),
         (equalize, 0, 1),
-        (sparse, 0, 0.25)
+        (sparse, 0, 0.25),
+        (global_sparse, 0, 0.25)
     ]
     if for_autoaug:
         l += [
