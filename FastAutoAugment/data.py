@@ -25,7 +25,7 @@ def get_dataloaders(dataset, batch, dataroot, split=0.15, cv_num=5, split_idx=0,
     total_aug = augs = None
     if isinstance(C.get()['aug'], list):
         logger.debug('augmentation provided.')
-        transform_train.append(Augmentation(C.get()['aug']))
+        # transform_train.append(Augmentation(C.get()['aug']))
     else:
         logger.debug('augmentation: %s' % C.get()['aug'])
 
@@ -93,11 +93,10 @@ class Augmentation(object):
         self.policies = policies
 
     def __call__(self, pnt):
+        org_size = pnt.size(0)
         for _ in range(1):
             policy = random.choice(self.policies)
             for name, pr, level in policy:
-                if random.random() > pr:
-                    continue
                 pnt = apply_augment(pnt, name, level)
         return pnt
 

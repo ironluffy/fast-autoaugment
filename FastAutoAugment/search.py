@@ -2,7 +2,9 @@ import copy
 import os
 import sys
 import time
+import random
 import torch
+import torch.nn as nn
 import numpy as np
 import ray
 import gorilla
@@ -22,8 +24,23 @@ from ray.tune import register_trainable, run_experiments
 from networks import get_model, num_class
 from common import get_logger, add_filehandler
 from archive import remove_deplicates, policy_decoder
+from utils.emd.emd_module import emdModule
+from utils.point_augmentations import apply_augment
 
 top1_valid_by_cv = defaultdict(lambda: list)
+
+
+class Augmentation(object):
+    def __init__(self, policies):
+        self.policies = policies
+
+    def __call__(self, pnt):
+        org_size = pnt.size(0)
+        for _ in range(1):
+            policy = random.choice(self.policies)
+            for name, pr, level in policy:
+                pnt = apply_augment(pnt, name, level)
+        return pnt
 
 
 def step_w_log(self):
@@ -103,16 +120,21 @@ def eval_tta(config, augment, reporter):
     metrics = Accumulator()
     loss_fn = torch.nn.CrossEntropyLoss(reduction='none')
 
+    emd_loss = nn.DataParallel(emdModule()).cuda()
+    aug_oper = Augmentation(C.get()['aug'])
+
     losses = []
     corrects = []
     for loader in src_loaders:
         data = next(loader)
         point_cloud = data['point_cloud'].cuda()
         label = torch.ones_like(data['label'], dtype=torch.int64).cuda()
+        trans_pc = aug_oper(point_cloud)
 
-        pred = model(point_cloud)
+        pred = model(trans_pc)
 
-        loss = loss_fn(pred, label)
+        loss_emd = (0.001 - torch.mean(emd_loss(point_cloud, trans_pc)[0])) / 0.001
+        loss = loss_fn(pred, label) + loss_emd
         losses.append(loss.detach().cpu().numpy())
 
         pred = pred.max(dim=1)[1]
