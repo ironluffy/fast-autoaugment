@@ -4,7 +4,7 @@ import utils.point_cloud_utils as pcu
 from utils.emd.emd_module import emdModule
 
 
-def random_crop_plane(point_clouds, level=0.6, random_range=0.3):
+def random_crop_plane(point_clouds, level=0.6, random_range=0.1):
     B, C, N = point_clouds.shape
     device = point_clouds.device
     level = 1.0 - level
@@ -34,7 +34,7 @@ def random_crop_plane(point_clouds, level=0.6, random_range=0.3):
     return cropped_point_clouds
 
 
-def random_crop_sphere(point_clouds, level=0.6, random_range=0.3):
+def random_crop_sphere(point_clouds, level=0.6, random_range=0.1):
     B, C, N = point_clouds.shape
     device = point_clouds.device
     min_rad = level * (0.8 - random_range)
@@ -74,7 +74,7 @@ def random_crop_sphere(point_clouds, level=0.6, random_range=0.3):
     return cropped_point_clouds
 
 
-def random_crop_sphere_reverse(point_clouds, level=0.6, random_range=0.3):
+def random_crop_sphere_reverse(point_clouds, level=0.6, random_range=0.1):
     B, C, N = point_clouds.shape
     device = point_clouds.device
     level = 1.0 - level
@@ -115,7 +115,7 @@ def random_crop_sphere_reverse(point_clouds, level=0.6, random_range=0.3):
     return cropped_point_clouds
 
 
-def naive_point_mix_up(point_clouds, level=1.0, random_range=0.3):
+def naive_point_mix_up(point_clouds, level=1.0, random_range=0.1):
     B, _, N = point_clouds.shape
     device = point_clouds.device
 
@@ -152,7 +152,7 @@ def naive_point_mix_up(point_clouds, level=1.0, random_range=0.3):
     return mixed_point_clouds  # , (label_a, label_b, lam)
 
 
-def point_mix_up(point_clouds, level=1.0, random_range=0.3):
+def point_mix_up(point_clouds, level=1.0, random_range=0.1):
     emd_loss2 = emdModule()
     B, _, N = point_clouds.shape
     device = point_clouds.device
@@ -178,7 +178,7 @@ def point_mix_up(point_clouds, level=1.0, random_range=0.3):
     return mixup_point_cloud  # , (label_a, label_b, lam)
 
 
-def point_mix_up_random_access(point_clouds, level=1.0, random_range=0.3):
+def point_mix_up_random_access(point_clouds, level=1.0, random_range=0.1):
     B, _, N = point_clouds.shape
     device = point_clouds.device
 
@@ -198,7 +198,7 @@ def point_mix_up_random_access(point_clouds, level=1.0, random_range=0.3):
     return mixup_point_cloud  # , (label_a, label_b, lam)
 
 
-def squeeze_z(point_clouds, level=0.6, random_range=0.3):
+def squeeze_z(point_clouds, level=0.6, random_range=0.1):
     B, C, N = point_clouds.shape
     device = point_clouds.device
     level = 1.0 - level
@@ -215,7 +215,7 @@ def squeeze_z(point_clouds, level=0.6, random_range=0.3):
     return squeeze_point_cloud
 
 
-def squeeze_xy(point_clouds, level=0.6, random_range=0.3):
+def squeeze_xy(point_clouds, level=0.6, random_range=0.1):
     B, C, N = point_clouds.shape
     device = point_clouds.device
     level = 1.0 - level
@@ -232,7 +232,7 @@ def squeeze_xy(point_clouds, level=0.6, random_range=0.3):
     return squeeze_point_cloud
 
 
-def squeeze_sphere(point_clouds, level=0.6, random_range=0.3):
+def squeeze_sphere(point_clouds, level=0.6, random_range=0.1):
     B, C, N = point_clouds.shape
     device = point_clouds.device
     level = 1.0 - level
@@ -255,7 +255,7 @@ def squeeze_sphere(point_clouds, level=0.6, random_range=0.3):
     return augmented_point_clouds
 
 
-def sparse(point_clouds, level=0.6, random_range=0.3):
+def sparse(point_clouds, level=0.6, random_range=0.1):
     B, C, N = point_clouds.shape
     device = point_clouds.device
     min_rad = level * (1 - random_range)
