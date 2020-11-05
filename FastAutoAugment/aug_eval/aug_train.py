@@ -41,26 +41,27 @@ def train(args, logger):
     num_class = 10
     num_points = 1024
 
-    if os.path.isfile(
-            'aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(args.dc_model, args.source_domain, args.target_domain,
-                                                                  args.num_op,
-                                                                  args.num_cv,
-                                                                  args.num_policy, args.num_search)):
-        aug_load = torch.load(
-            'aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(args.dc_model, args.source_domain, args.target_domain,
-                                                                  args.num_op,
-                                                                  args.num_cv,
-                                                                  args.num_policy, args.num_search))
-    else:
-        aug_load = torch.load(
-            'aug_final/{}_{}2{}_op{}_ncv{}_npy{}.pth'.format(args.dc_model, args.source_domain, args.target_domain,
-                                                             args.num_op,
-                                                             args.num_cv,
-                                                             args.num_policy))
-
     if args.aug_all:
         aug = all_augment
     else:
+        if os.path.isfile(
+                'aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(args.dc_model, args.source_domain,
+                                                                      args.target_domain,
+                                                                      args.num_op,
+                                                                      args.num_cv,
+                                                                      args.num_policy, args.num_search)):
+            aug_load = torch.load(
+                'aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(args.dc_model, args.source_domain,
+                                                                      args.target_domain,
+                                                                      args.num_op,
+                                                                      args.num_cv,
+                                                                      args.num_policy, args.num_search))
+        else:
+            aug_load = torch.load(
+                'aug_final/{}_{}2{}_op{}_ncv{}_npy{}.pth'.format(args.dc_model, args.source_domain, args.target_domain,
+                                                                 args.num_op,
+                                                                 args.num_cv,
+                                                                 args.num_policy))
         aug = Augmentation(aug_load)
 
     # Dataset
