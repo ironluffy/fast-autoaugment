@@ -71,7 +71,7 @@ def _get_path(dataset, model, tag):
                         'models/%s_%s_%s.model' % (dataset, model, tag))
 
 
-@ray.remote(num_gpus=2, max_calls=1)
+@ray.remote(num_gpus=2, max_calls=2)
 def train_model(config, dataroot, augment, cv_ratio_test, cv_num, cv_fold, save_path=None, skip_exist=False,
                 is_dc=False):
     C.get()
@@ -93,6 +93,7 @@ def eval_tta(config, augment, reporter):
 
     # eval
     model = get_model(C.get()['model'], num_class(C.get()['dataset']))
+    model = nn.DataParallel(model).cuda()
     ckpt = torch.load(save_path + '.pth')
     if 'model' in ckpt:
         model.load_state_dict(ckpt['model'])
