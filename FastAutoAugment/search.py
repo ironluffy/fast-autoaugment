@@ -73,7 +73,7 @@ def _get_path(dataset, model, tag):
                         'models/%s_%s_%s.model' % (dataset, model, tag))
 
 
-@ray.remote(num_gpus=2, max_calls=2)
+@ray.remote(num_gpus=2, max_calls=1)
 def train_model(config, dataroot, augment, cv_ratio_test, cv_num, cv_fold, save_path=None, skip_exist=False,
                 is_dc=False):
     C.get()
