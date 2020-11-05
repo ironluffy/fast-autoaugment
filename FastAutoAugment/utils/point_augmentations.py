@@ -1,4 +1,5 @@
 import torch
+import random
 import numpy as np
 import utils.point_cloud_utils as pcu
 from utils.emd.emd_module import emdModule
@@ -336,17 +337,17 @@ def mix_up_loss(pred, mixup_label, criterion):
 
 def augment_list(for_autoaug=True):  # 16 oeprations and their ranges
     l = [
-        (random_crop_plane, 0, 0.25),
-        (random_crop_sphere, 0, 0.25),
-        (random_crop_sphere_reverse, 0, 0.25),
-        (naive_point_mix_up, 0, 0.5),
-        (point_mix_up, 0, 0.5),
-        (squeeze_xy, 0, 0.25),
-        (squeeze_z, 0, 0.25),
-        (squeeze_sphere, 0, 0.25),
-        (equalize, 0, 1),
-        (sparse, 0, 0.25),
-        (global_sparse, 0, 0.25)
+        (random_crop_plane, 0, 1.0),
+        (random_crop_sphere, 0, 1.0),
+        (random_crop_sphere_reverse, 0, 1.0),
+        (naive_point_mix_up, 0, 1.0),
+        (point_mix_up, 0, 1.0),
+        (squeeze_xy, 0, 1.0),
+        (squeeze_z, 0, 1.0),
+        (squeeze_sphere, 0, 1.0),
+        (equalize, 0, 1.0),
+        (sparse, 0, 1.0),
+        (global_sparse, 0, 1.0)
     ]
     if for_autoaug:
         l += [
@@ -355,6 +356,7 @@ def augment_list(for_autoaug=True):  # 16 oeprations and their ranges
 
 
 augment_dict = {fn.__name__: (fn, v1, v2) for fn, v1, v2 in augment_list()}
+all_augment = [[(fn, random.random(), random.random()) for fn, v1, v2 in augment_list()]]
 
 
 def get_augment(name):

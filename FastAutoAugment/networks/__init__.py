@@ -4,7 +4,7 @@ from torch.nn.parallel import DistributedDataParallel
 import torch.backends.cudnn as cudnn
 
 from .PointNet import PointNetClassification, PointNetClassificationV5, PointNetClassificationV7
-from .DGCNN.DGCNN import DGCNNClassification
+from .DGCNN.DGCNN import DGCNN
 
 
 def get_model(conf, num_class=10, local_rank=-1):

@@ -16,7 +16,7 @@ if __name__ == '__main__':
     parser.add_argument('--source_domain', type=str, choices=['modelnet', 'scannet', 'shapenet'])
     parser.add_argument('--target_domain', type=str, choices=['modelnet', 'scannet', 'shapenet'])
     parser.add_argument('--num_workers', type=int, default=0)
-    parser.add_argument('--epoch', type=int, default=200)
+    parser.add_argument('--epoch', type=int, default=150)
     parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--source_train_sampling', type=str, default='random')
     parser.add_argument('--source_val_sampling', type=str, default='fixed')
@@ -29,6 +29,7 @@ if __name__ == '__main__':
     parser.add_argument('--num-policy', type=int, default=5)
     parser.add_argument('--num-search', type=int, default=100)
     parser.add_argument('--tag', type=str, default=datetime.now().strftime('%Y%m%d_%H%M%S'))
+    parser.add_argument('--aug_all', action='store_true')
     parser.add_argument('--only_eval', action='store_true')
     parser.add_argument('--model', type=str, default='pointnet')
 

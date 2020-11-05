@@ -11,11 +11,11 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from aug_eval.datasets import PointDA
 from aug_eval.aug_test import test_model
-from utils.point_augmentations import apply_augment
+from utils.point_augmentations import apply_augment, all_augment
 from utils import metrics
 
 from networks.PointNet import PointNetClassification
-from networks.DGCNN.DGCNN import DGCNNClassification
+from networks.DGCNN.DGCNN import DGCNN as DGCNNClassification
 
 
 class Augmentation(object):
@@ -58,7 +58,10 @@ def train(args, logger):
                                                              args.num_cv,
                                                              args.num_policy))
 
-    aug = Augmentation(aug_load)
+    if args.aug_all:
+        aug = all_augment
+    else:
+        aug = Augmentation(aug_load)
 
     # Dataset
     source_trainset = PointDA(root=args.data_dir, domain=args.source_domain, partition='train',

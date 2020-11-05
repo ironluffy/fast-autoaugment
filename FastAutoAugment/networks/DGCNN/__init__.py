@@ -1,1 +1,1 @@
-from .DGCNN import DGCNNClassification, DGCNNClassificationV2
+from .DGCNN import DGCNN
