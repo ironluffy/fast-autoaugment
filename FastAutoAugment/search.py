@@ -123,7 +123,7 @@ def eval_tta(config, augment, reporter):
     metrics = Accumulator()
     loss_fn = torch.nn.CrossEntropyLoss(reduction='none')
 
-    emd_loss = nn.DataParallel(emdModule()).cuda()
+    emd_loss = emdModule()
     aug_oper = Augmentation(C.get()['aug'])
 
     losses = []
@@ -136,7 +136,8 @@ def eval_tta(config, augment, reporter):
 
         pred = model(trans_pc)
 
-        loss_emd = (torch.mean(emd_loss(point_cloud, trans_pc, 0.05, 3000)[0])) / 0.001
+        loss_emd = (torch.mean(
+            emd_loss(point_cloud.permute(0, 2, 1), trans_pc.permute(0, 2, 1), 0.05, 3000)[0])) / 0.001
         loss = loss_fn(pred, label) + loss_emd
         losses.append(loss.detach().cpu().numpy())
 
