@@ -39,6 +39,8 @@ class Augmentation(object):
         for _ in range(1):
             policy = random.choice(self.policies)
             for name, pr, level in policy:
+                if random.random() > pr:
+                    continue
                 pnt = apply_augment(pnt, name, level)
         return pnt
 
@@ -93,12 +95,12 @@ def eval_tta(config, augment, reporter):
 
     # eval
     model = get_model(C.get()['model'], num_class(C.get()['dataset']))
-    model = nn.DataParallel(model).cuda()
     ckpt = torch.load(save_path + '.pth')
     if 'model' in ckpt:
         model.load_state_dict(ckpt['model'])
     else:
         model.load_state_dict(ckpt)
+    model = nn.DataParallel(model).cuda()
     model.eval()
 
     src_loaders = []

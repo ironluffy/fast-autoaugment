@@ -93,10 +93,11 @@ class Augmentation(object):
         self.policies = policies
 
     def __call__(self, pnt):
-        org_size = pnt.size(0)
         for _ in range(1):
             policy = random.choice(self.policies)
             for name, pr, level in policy:
+                if random.random() > pr:
+                    continue
                 pnt = apply_augment(pnt, name, level)
         return pnt
 
