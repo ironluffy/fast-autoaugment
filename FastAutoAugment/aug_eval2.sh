@@ -1,8 +1,8 @@
 #!/bin/bash
-num_op=2
+num_op=5
 num_cv=1
-num_policy=20
-num_search=300
+num_policy=5
+num_search=200
 dc_model=pointnet
 model=dgcnn
 tag=1
