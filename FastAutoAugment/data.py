@@ -1,13 +1,11 @@
 import torch
-import random
 import logging
 import torch.distributed as dist
 
 from FastAutoAugment.datasets import PointDA
 from torch.utils.data import SubsetRandomSampler, Sampler, Subset
 from sklearn.model_selection import StratifiedShuffleSplit
-from theconf import Config as C, ConfigArgumentParser
-from FastAutoAugment.utils.point_augmentations import apply_augment
+from theconf import Config as C
 from FastAutoAugment.common import get_logger
 
 logger = get_logger('Fast AutoAugment')
@@ -87,19 +85,6 @@ def get_dataloaders(dataset, batch, dataroot, split=0.15, cv_num=5, split_idx=0,
     )
     return train_sampler, trainloader, validloader, testloader
 
-
-class Augmentation(object):
-    def __init__(self, policies):
-        self.policies = policies
-
-    def __call__(self, pnt):
-        for _ in range(1):
-            policy = random.choice(self.policies)
-            for name, pr, level in policy:
-                if random.random() > pr:
-                    continue
-                pnt = apply_augment(pnt, name, level)
-        return pnt
 
 
 class SubsetSampler(Sampler):
