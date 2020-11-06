@@ -267,6 +267,10 @@ if __name__ == '__main__':
     final_policy_set = []
     total_computation = 0
     reward_attr = 'minus_loss'  # top1_valid or minus_loss
+    reward_list = []
+    searched_dict = {}
+    searched_dict['scores'] = []
+    searched_dict['policies'] = []
     for _ in range(1):  # run multiple times.
         for cv_fold in range(cv_num):
             name = "search_%s_%s_fold%d_ratio%.1f" % (
@@ -303,11 +307,14 @@ if __name__ == '__main__':
                 final_policy = policy_decoder(result.config, args.num_policy, args.num_op)
                 logger.info('loss=%.12f top1_valid=%.4f %s' % (
                     result.last_result['minus_loss'], result.last_result['top1_valid'], final_policy))
-
+                searched_dict['scores'].append(result.last_result['minus_loss'])
+                searched_dict['policies'].append(final_policy)
                 final_policy = remove_deplicates(final_policy)
                 final_policy_set.extend(final_policy)
-    torch.save(final_policy_set,
+
+    searched_dict['final_policy'] = final_policy_set
+    torch.save(searched_dict,
                './aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(args.dc_model, C.get()['source'],
                                                                        C.get()['target'],
                                                                        args.num_op, args.num_cv,
-                                                                       args.num_policy, args.num_search))
+                                                                       args.num_policy, args.num_search)
