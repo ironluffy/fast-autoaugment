@@ -137,7 +137,7 @@ def eval_tta(config, augment, reporter):
         pred = model(trans_pc)
 
         loss_emd = (torch.mean(
-            emd_loss(point_cloud.permute(0, 2, 1), trans_pc.permute(0, 2, 1), 0.05, 3000)[0])) / 0.001
+            emd_loss(point_cloud.permute(0, 2, 1), trans_pc.permute(0, 2, 1), 0.05, 3000)[0])) * 10000
         loss = loss_fn(pred, label) + loss_emd
         losses.append(loss.detach().cpu().numpy())
 
