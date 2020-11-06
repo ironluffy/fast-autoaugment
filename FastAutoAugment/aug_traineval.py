@@ -52,11 +52,11 @@ if __name__ == '__main__':
                                                                            args.num_op, args.num_cv,
                                                                            args.num_policy, args.tag))
     logger = ExperimentLogger(args.save_dir, exist_ok=True)
-    logger.save_args(args)
 
     random.seed(int(args.tag))
     all_augment = [random.sample([(fn.__name__, random.random(), random.random()) for fn, v1, v2 in augment_list()], 3)]
     args.all_augment = all_augment
+    logger.save_args(args)
 
     if args.only_eval:
         aug_eval.test(args, logger)
