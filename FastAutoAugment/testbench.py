@@ -33,17 +33,17 @@ if __name__ == "__main__":
         sub_policy_prob_dict[key] /= sub_policy_count_dict[key]
         sub_policy_level_dict[key] /= sub_policy_count_dict[key]
 
-    print(policies)
+    print(policies[0][0][0])
 
-    print('prob')
-    for key, value in sub_policy_prob_dict.items():
-        print(key, value)
-
-    print('level')
-
-    for key, value in sub_policy_level_dict.items():
-        print(key, value)
-
-    print('count')
-    for key, value in sub_policy_count_dict.items():
-        print(key, value)
+    # print('prob')
+    # for key, value in sub_policy_prob_dict.items():
+    #     print(key, value)
+    #
+    # print('level')
+    #
+    # for key, value in sub_policy_level_dict.items():
+    #     print(key, value)
+    #
+    # print('count')
+    # for key, value in sub_policy_count_dict.items():
+    #     print(key, value)
