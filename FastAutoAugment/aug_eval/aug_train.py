@@ -40,7 +40,7 @@ def train(args, logger):
     num_points = 1024
 
     if args.aug_all:
-        aug = args.all_augment
+        aug_load = args.all_augment
     else:
         if os.path.isfile(
                 'aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(args.dc_model, args.source_domain,
@@ -60,7 +60,7 @@ def train(args, logger):
                                                                  args.num_op,
                                                                  args.num_cv,
                                                                  args.num_policy))
-        aug = Augmentation(aug_load)
+    aug = Augmentation(aug_load)
 
     # Dataset
     source_trainset = PointDA(root=args.data_dir, domain=args.source_domain, partition='train',
