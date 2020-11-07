@@ -40,9 +40,9 @@ if __name__ == "__main__":
         sub_policy_prob_dict[key] /= sub_policy_count_dict[key]
         sub_policy_level_dict[key] /= sub_policy_count_dict[key]
 
-    source_trainset = PointDA(root=args.data_dir, domain=src_domain, partition='train',
+    source_trainset = PointDA(root='..', domain=src_domain, partition='train',
                               num_points=1024, sampling_method='random', download=True)
-    source_valset = PointDA(root=args.data_dir, domain=src_domain, partition='val',
+    source_valset = PointDA(root='..', domain=src_domain, partition='val',
                             num_points=1024, sampling_method='random', download=True)
 
     # DataLoader
