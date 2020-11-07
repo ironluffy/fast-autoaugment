@@ -52,7 +52,7 @@ if __name__ == "__main__":
                                   batch_size=64)
 
     emd_loss = emdModule().cuda()
-    total_emd_loss =
+    total_emd_loss = 0
     for data in tqdm(source_trainloader):
         with torch.no_grad():
             with torch.no_grad():
