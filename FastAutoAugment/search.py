@@ -35,7 +35,6 @@ class Augmentation(object):
         self.policies = policies
 
     def __call__(self, pnt):
-        org_size = pnt.size(0)
         for _ in range(1):
             policy = random.choice(self.policies)
             for name, pr, level in policy:
@@ -129,23 +128,24 @@ def eval_tta(config, augment, reporter):
     losses = []
     corrects = []
     for loader in src_loaders:
-        data = next(loader)
-        point_cloud = data['point_cloud'].cuda()
-        label = torch.ones_like(data['label'], dtype=torch.int64).cuda()
-        trans_pc = aug_oper(point_cloud)
+        with torch.no_grad():
+            data = next(loader)
+            point_cloud = data['point_cloud'].cuda()
+            label = torch.ones_like(data['label'], dtype=torch.int64).cuda()
+            trans_pc = aug_oper(point_cloud)
 
-        pred = model(trans_pc)
+            pred = model(trans_pc)
 
-        loss_emd = (torch.mean(
-            emd_loss(point_cloud.permute(0, 2, 1), trans_pc.permute(0, 2, 1), 0.05, 3000)[0])) * 10000
-        loss = loss_fn(pred, label) + loss_emd
-        losses.append(loss.detach().cpu().numpy())
+            loss_emd = (torch.mean(
+                emd_loss(point_cloud.permute(0, 2, 1), trans_pc.permute(0, 2, 1), 0.05, 3000)[0])) * 10000
+            loss = loss_fn(pred, label) + loss_emd
+            losses.append(loss.detach().cpu().numpy())
 
-        pred = pred.max(dim=1)[1]
-        pred = pred.t()
-        correct = float(torch.sum(pred == label).item()) / pred.size(0) * 100
-        corrects.append(correct)
-        del loss, correct, pred, data, label
+            pred = pred.max(dim=1)[1]
+            pred = pred.t()
+            correct = float(torch.sum(pred == label).item()) / pred.size(0) * 100
+            corrects.append(correct)
+            del loss, correct, pred, data, label
 
     losses = np.concatenate(losses)
     losses_min = np.min(losses, axis=0).squeeze()
