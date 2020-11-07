@@ -116,7 +116,7 @@ def eval_tta(config, augment, reporter):
 
             pred = model(trans_pc)
 
-            if C.get()['args']['use_emd']:
+            if C.get()['args'].use_emd:
                 loss_emd = (torch.mean(
                     emd_loss(point_cloud.permute(0, 2, 1), trans_pc.permute(0, 2, 1), 0.05, 3000)[0])) * 10000
             else:
