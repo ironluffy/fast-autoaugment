@@ -1,7 +1,6 @@
 import os
 import tqdm
 import torch
-import random
 import torch.nn as nn
 import torch.optim as optim
 
@@ -48,7 +47,7 @@ def train(args, logger):
                                                                  args.num_op,
                                                                  args.num_cv,
                                                                  args.num_policy))
-            aug = Augmentation(aug_load['final_policy'])
+        aug = Augmentation(aug_load['final_policy'])
 
     # Dataset
     source_trainset = PointDA(root=args.data_dir, domain=args.source_domain, partition='train',

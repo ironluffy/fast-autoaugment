@@ -3,11 +3,11 @@ import random
 import logging
 import torch.distributed as dist
 
-from FastAutoAugment.datasets import PointDA
+from datasets import PointDA
 from torch.utils.data import SubsetRandomSampler, Sampler, Subset
 from sklearn.model_selection import StratifiedShuffleSplit
 from theconf import Config as C
-from FastAutoAugment.common import get_logger
+from common import get_logger
 from utils.point_augmentations import apply_augment
 
 logger = get_logger('Fast AutoAugment')
