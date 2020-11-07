@@ -74,15 +74,15 @@ def get_dataloaders(dataset, batch, dataroot, split=0.15, cv_num=5, split_idx=0,
             logger.info(f'----- dataset with DistributedSampler  {dist.get_rank()}/{dist.get_world_size()}')
 
     trainloader = torch.utils.data.DataLoader(
-        total_trainset, batch_size=batch, shuffle=True if train_sampler is None else False, num_workers=8,
+        total_trainset, batch_size=batch, shuffle=True if train_sampler is None else False, num_workers=0,
         pin_memory=True,
         sampler=train_sampler, drop_last=True)
     validloader = torch.utils.data.DataLoader(
-        total_trainset, batch_size=batch, shuffle=False, num_workers=4, pin_memory=True,
+        total_trainset, batch_size=batch, shuffle=False, num_workers=0, pin_memory=True,
         sampler=valid_sampler, drop_last=False)
 
     testloader = torch.utils.data.DataLoader(
-        testset, batch_size=batch, shuffle=False, num_workers=4, pin_memory=True,
+        testset, batch_size=batch, shuffle=False, num_workers=0, pin_memory=True,
         drop_last=False
     )
     return train_sampler, trainloader, validloader, testloader

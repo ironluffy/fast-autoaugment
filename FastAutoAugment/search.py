@@ -128,7 +128,7 @@ def eval_tta(config, augment, reporter):
             pred = pred.t()
             correct = float(torch.sum(pred == label).item()) / pred.size(0) * 100
             corrects.append(correct)
-            del loss, correct, pred, data, label
+            del loss, correct, pred, data, label, loss_emd
 
     losses = np.concatenate(losses)
     losses_min = np.min(losses, axis=0).squeeze()
@@ -208,7 +208,7 @@ if __name__ == '__main__':
     tqdm_epoch = tqdm(range(C.get()['epoch']))
     is_done = False
     for epoch in tqdm_epoch:
-        time.sleep(15)
+        time.sleep(20)
         while True:
             epochs_per_cv = OrderedDict()
             for cv_idx in range(cv_num):

@@ -305,20 +305,10 @@ def train_and_eval(tag, dataroot, test_ratio=0.0, cv_num=5, cv_fold=0, reporter=
                                 writer=writers[0], verbose=(is_master and local_rank <= 0), scheduler=scheduler,
                                 ema=ema, wd=C.get()['optimizer']['decay'], tqdm_disabled=tqdm_disabled)
         model.eval()
+        torch.cuda.synchronize()
 
         if math.isnan(rs['train']['loss']):
             raise Exception('train loss is NaN.')
-
-        if ema is not None and C.get()['optimizer']['ema_interval'] > 0 and epoch % C.get()['optimizer'][
-            'ema_interval'] == 0:
-            logger.info(f'ema synced+ rank={dist.get_rank()}')
-            if ema is not None:
-                model.load_state_dict(ema.state_dict())
-            for name, x in model.state_dict().items():
-                # print(name)
-                dist.broadcast(x, 0)
-            torch.cuda.synchronize()
-            logger.info(f'ema synced- rank={dist.get_rank()}')
 
         if is_master and (epoch % evaluation_interval == 0 or epoch == max_epoch):
             with torch.no_grad():
