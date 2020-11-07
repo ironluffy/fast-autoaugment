@@ -18,8 +18,8 @@ if __name__ == "__main__":
     policy_path = os.path.join(root,
                                '{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(dc_model, src_domain, trg_domain, num_op,
                                                                            num_cv, num_policy, num_search))
-    policies = torch.load(policy_path)['final_policy']
-    aug_model = Augmentation(policies)
+    policies = torch.load(policy_path)
+    aug_model = Augmentation(policies['final_policy'])
 
     sub_policy_prob_dict = {}
     sub_policy_level_dict = {}
@@ -80,5 +80,5 @@ if __name__ == "__main__":
     for key, value in sub_policy_count_dict.items():
         print(key, value)
 
-    scores = torch.load(policy_path)['scores']
-    print(scores)
+    scores = torch.load(policy_path)
+    print(scores['scores'])
