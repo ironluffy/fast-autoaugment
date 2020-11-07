@@ -56,21 +56,29 @@ class PointDA(data.Dataset):
         if point_cloud.size(2) > self.num_points:
             point_cloud = SAMPLING_METHOD[self.sampling_method](point_cloud, self.num_points, seed=seed)[0]
 
-        if self.transforms is not None:
-            for transform in self.transforms:
-                point_cloud = transform(point_cloud)
-
         if self.partition in ['train', 'trainval']:
             point_cloud = pcu.random_rotate_one_axis(point_cloud, axis='z')
             point_cloud = pcu.jitter(point_cloud)
             point_cloud = pcu.point_permutate(point_cloud)
 
-        point_cloud = point_cloud.squeeze()
+        if self.transforms is not None:
+            transformed = point_cloud.clone().detach()
+            for transform in self.transforms:
+                transformed = transform(point_cloud)
+            transformed = transformed.squeeze()
+            point_cloud = point_cloud.squeeze()
+            output = {
+                'point_cloud': point_cloud,
+                'transformed': transformed,
+                'label': label,
+            }
 
-        output = {
-            'point_cloud': point_cloud,
-            'label': label,
-        }
+        else:
+            point_cloud = point_cloud.squeeze()
+            output = {
+                'point_cloud': point_cloud,
+                'label': label,
+            }
 
         return output
 

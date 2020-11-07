@@ -1,4 +1,5 @@
 import torch
+import random
 import logging
 import torch.distributed as dist
 
@@ -7,6 +8,7 @@ from torch.utils.data import SubsetRandomSampler, Sampler, Subset
 from sklearn.model_selection import StratifiedShuffleSplit
 from theconf import Config as C
 from FastAutoAugment.common import get_logger
+from utils.point_augmentations import apply_augment
 
 logger = get_logger('Fast AutoAugment')
 logger.setLevel(logging.INFO)
@@ -23,7 +25,7 @@ def get_dataloaders(dataset, batch, dataroot, split=0.15, cv_num=5, split_idx=0,
     total_aug = augs = None
     if isinstance(C.get()['aug'], list):
         logger.debug('augmentation provided.')
-        # transform_train.append(Augmentation(C.get()['aug']))
+        transform_train.append(Augmentation(C.get()['aug']))
     else:
         logger.debug('augmentation: %s' % C.get()['aug'])
 
@@ -72,19 +74,32 @@ def get_dataloaders(dataset, batch, dataroot, split=0.15, cv_num=5, split_idx=0,
             logger.info(f'----- dataset with DistributedSampler  {dist.get_rank()}/{dist.get_world_size()}')
 
     trainloader = torch.utils.data.DataLoader(
-        total_trainset, batch_size=batch, shuffle=True if train_sampler is None else False, num_workers=0,
+        total_trainset, batch_size=batch, shuffle=True if train_sampler is None else False, num_workers=8,
         pin_memory=True,
         sampler=train_sampler, drop_last=True)
     validloader = torch.utils.data.DataLoader(
-        total_trainset, batch_size=batch, shuffle=False, num_workers=0, pin_memory=True,
+        total_trainset, batch_size=batch, shuffle=False, num_workers=4, pin_memory=True,
         sampler=valid_sampler, drop_last=False)
 
     testloader = torch.utils.data.DataLoader(
-        testset, batch_size=batch, shuffle=False, num_workers=0, pin_memory=True,
+        testset, batch_size=batch, shuffle=False, num_workers=4, pin_memory=True,
         drop_last=False
     )
     return train_sampler, trainloader, validloader, testloader
 
+
+class Augmentation(object):
+    def __init__(self, policies):
+        self.policies = policies
+
+    def __call__(self, pnt):
+        for _ in range(1):
+            policy = random.choice(self.policies)
+            for name, pr, level in policy:
+                if random.random() > pr:
+                    continue
+                pnt = apply_augment(pnt, name, level)
+        return pnt
 
 
 class SubsetSampler(Sampler):

@@ -2,7 +2,6 @@ import copy
 import os
 import sys
 import time
-import random
 import torch
 import torch.nn as nn
 import numpy as np
@@ -25,23 +24,8 @@ from networks import get_model, num_class
 from common import get_logger, add_filehandler
 from archive import remove_deplicates, policy_decoder
 from utils.emd.emd_module import emdModule
-from utils.point_augmentations import apply_augment
 
 top1_valid_by_cv = defaultdict(lambda: list)
-
-
-class Augmentation(object):
-    def __init__(self, policies):
-        self.policies = policies
-
-    def __call__(self, pnt):
-        for _ in range(1):
-            policy = random.choice(self.policies)
-            for name, pr, level in policy:
-                if random.random() > pr:
-                    continue
-                pnt = apply_augment(pnt, name, level)
-        return pnt
 
 
 def step_w_log(self):
@@ -103,10 +87,7 @@ def eval_tta(config, augment, reporter):
     model.eval()
 
     src_loaders = []
-    trg_loaders = []
     for _ in range(augment['num_policy']):
-        # _, tl, validloader, tl2 = get_dataloaders(C.get()['dataset'], C.get()['batch'], augment['dataroot'],
-        #                                           cv_ratio_test, split_idx=cv_fold)
         _, src_tl, src_validloader, src_ttl = get_dataloaders(C.get()['dataset'],
                                                               C.get()['batch'],
                                                               augment['dataroot'],
@@ -122,8 +103,7 @@ def eval_tta(config, augment, reporter):
     metrics = Accumulator()
     loss_fn = torch.nn.CrossEntropyLoss(reduction='none')
 
-    emd_loss = emdModule()
-    aug_oper = Augmentation(C.get()['aug'])
+    emd_loss = nn.DataParallel(emdModule()).cuda()
 
     losses = []
     corrects = []
@@ -132,12 +112,15 @@ def eval_tta(config, augment, reporter):
             data = next(loader)
             point_cloud = data['point_cloud'].cuda()
             label = torch.ones_like(data['label'], dtype=torch.int64).cuda()
-            trans_pc = aug_oper(point_cloud)
+            trans_pc = data['transformed']
 
             pred = model(trans_pc)
 
-            loss_emd = (torch.mean(
-                emd_loss(point_cloud.permute(0, 2, 1), trans_pc.permute(0, 2, 1), 0.05, 3000)[0])) * 10000
+            if C.get()['args']['use_emd']:
+                loss_emd = (torch.mean(
+                    emd_loss(point_cloud.permute(0, 2, 1), trans_pc.permute(0, 2, 1), 0.05, 3000)[0])) * 10000
+            else:
+                loss_emd = 0
             loss = loss_fn(pred, label) + loss_emd
             losses.append(loss.detach().cpu().numpy())
 
@@ -180,13 +163,15 @@ if __name__ == '__main__':
     parser.add_argument('--num-search', type=int, default=100)
     parser.add_argument('--cv-ratio', type=float, default=0.4)
     parser.add_argument('--dc_model', type=str, default='pointnetv7',
-                        choices=['pointnet', 'dgcnn', 'pointnetv5', 'pointnetv7'])
+                        choices=['pointnet', 'pointnetv5', 'pointnetv7'])
     parser.add_argument('--topk', type=int, default=8)
     parser.add_argument('--decay', type=float, default=-1)
     parser.add_argument('--per-class', action='store_true')
     parser.add_argument('--resume', action='store_true')
+    parser.add_argument('--use_emd', action='store_true')
     parser.add_argument('--smoke-test', action='store_true')
     args = parser.parse_args()
+
 
     if args.decay > 0:
         logger.info('decay=%.4f' % args.decay)
@@ -198,6 +183,7 @@ if __name__ == '__main__':
     logger.info('configuration...')
     logger.info(json.dumps(C.get().conf, sort_keys=True, indent=4))
     logger.info('initialize ray...')
+    C.get()['args'] = args
     # ray.init(redis_address=args.redis)
     ray.init(num_gpus=2)
 
