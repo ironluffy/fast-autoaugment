@@ -23,7 +23,6 @@ class Augmentation(object):
         self.policies = policies
 
     def __call__(self, pnt):
-        org_size = pnt.size(0)
         for _ in range(1):
             policy = random.choice(self.policies)
             for name, pr, level in policy:
@@ -43,6 +42,7 @@ def train(args, logger):
 
     if args.aug_all:
         aug_load = args.all_augment
+        aug = Augmentation(aug_load)
     else:
         if os.path.isfile(
                 'aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(args.dc_model, args.source_domain,
@@ -62,7 +62,7 @@ def train(args, logger):
                                                                  args.num_op,
                                                                  args.num_cv,
                                                                  args.num_policy))
-    aug = Augmentation(aug_load)
+            aug = Augmentation(aug_load['final_policy'])
 
     # Dataset
     source_trainset = PointDA(root=args.data_dir, domain=args.source_domain, partition='train',

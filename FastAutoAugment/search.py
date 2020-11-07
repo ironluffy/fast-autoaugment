@@ -317,4 +317,5 @@ if __name__ == '__main__':
                './aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(args.dc_model, C.get()['source'],
                                                                        C.get()['target'],
                                                                        args.num_op, args.num_cv,
-                                                                       args.num_policy, args.num_search)
+                                                                       args.num_policy, args.num_search),
+               _use_new_zipfile_serialization=False)
