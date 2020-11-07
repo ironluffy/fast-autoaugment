@@ -63,7 +63,7 @@ if __name__ == "__main__":
                     emd_loss(point_clouds.permute(0, 2, 1), trans_pc.permute(0, 2, 1), 0.05, 3000)[0])) * 10000
                 total_emd_loss += loss_emd.item()
 
-    print(emd_loss/10000)
+    print(total_emd_loss/10000)
 
     print(policies)
 
