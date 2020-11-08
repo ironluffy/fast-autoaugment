@@ -168,7 +168,7 @@ if __name__ == '__main__':
     parser.add_argument('--decay', type=float, default=-1)
     parser.add_argument('--per-class', action='store_true')
     parser.add_argument('--resume', action='store_true')
-    parser.add_argument('--use_emd', action='store_true')
+    parser.add_argument('--use_emd', action='store_false')
     parser.add_argument('--smoke-test', action='store_true')
     args = parser.parse_args()
 
