@@ -300,8 +300,8 @@ if __name__ == '__main__':
 
     searched_dict['final_policy'] = final_policy_set
     torch.save(searched_dict,
-               './aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(args.dc_model, C.get()['source'],
+               './aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}_{}.pth'.format(args.dc_model, C.get()['source'],
                                                                        C.get()['target'],
                                                                        args.num_op, args.num_cv,
-                                                                       args.num_policy, args.num_search),
+                                                                       args.num_policy, args.num_search, args.use_emd),
                _use_new_zipfile_serialization=False)
