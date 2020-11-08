@@ -322,7 +322,7 @@ def global_sparse(point_clouds, level=0.6, random_range=0.3):
     return augmented_point_clouds
 
 
-def equalize(point_clouds, level):
+def equalize(point_clouds, level, random_range=0.3):
     return point_clouds
 
 
@@ -362,6 +362,6 @@ def get_augment(name):
     return augment_dict[name]
 
 
-def apply_augment(pc, name, level):
+def apply_augment(pc, name, level, random_range=0.3):
     augment_fn, low, high = get_augment(name)
-    return augment_fn(pc, level * (high - low) + low)
+    return augment_fn(pc, level * (high - low) + low, random_range)

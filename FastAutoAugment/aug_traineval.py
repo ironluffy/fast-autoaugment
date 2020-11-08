@@ -32,6 +32,8 @@ if __name__ == '__main__':
     parser.add_argument('--num-search', type=int, default=100)
     parser.add_argument('--tag', type=str, default=datetime.now().strftime('%Y%m%d_%H%M%S'))
     parser.add_argument('--aug_all', action='store_true')
+    parser.add_argument('--random_range', type=float, default=0.3)
+    parser.add_argument('--trs_deter', action='store_true')
     parser.add_argument('--only_eval', action='store_true')
     parser.add_argument('--use_emd', action='store_false')
     parser.add_argument('--model', type=str, default='pointnet')

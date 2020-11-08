@@ -15,7 +15,7 @@ logger.setLevel(logging.INFO)
 
 
 def get_dataloaders(dataset, batch, dataroot, split=0.15, cv_num=5, split_idx=0, multinode=False, target_lb=-1,
-                    target=False):
+                    target=False, random_range=0.3):
     if 'pointda':
         transform_train = []
         transform_test = []
@@ -25,7 +25,7 @@ def get_dataloaders(dataset, batch, dataroot, split=0.15, cv_num=5, split_idx=0,
     total_aug = augs = None
     if isinstance(C.get()['aug'], list):
         logger.debug('augmentation provided.')
-        transform_train.append(Augmentation(C.get()['aug']))
+        transform_train.append(Augmentation(C.get()['aug'], random_range=random_range))
     else:
         logger.debug('augmentation: %s' % C.get()['aug'])
 
@@ -89,16 +89,20 @@ def get_dataloaders(dataset, batch, dataroot, split=0.15, cv_num=5, split_idx=0,
 
 
 class Augmentation(object):
-    def __init__(self, policies):
+    def __init__(self, policies, deterministic=False, random_range=0.3):
         self.policies = policies
+        self.deterministic = deterministic
 
     def __call__(self, pnt):
         for _ in range(1):
             policy = random.choice(self.policies)
             for name, pr, level in policy:
-                if random.random() > pr:
-                    continue
-                pnt = apply_augment(pnt, name, level)
+                if self.deterministic:
+                    pnt = apply_augment(pnt, name, level, random_range=0.3)
+                else:
+                    if random.random() > pr:
+                        continue
+                    pnt = apply_augment(pnt, name, level, random_range=0.3)
         return pnt
 
 

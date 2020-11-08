@@ -27,21 +27,38 @@ def train(args, logger):
 
     if args.aug_all:
         aug_load = args.all_augment
-        aug = Augmentation(aug_load)
+        aug = Augmentation(aug_load, deterministic=args.trs_deter, random_range=args.random_range)
     else:
         if os.path.isfile(
+                'aug_final/{0}_{1}2{2}_op{3}_ncv{4}_npy{5}_ns{6}_rnd{7:0.2f}_{8}.pth'.format(args.dc_model, args.source_domain,
+                                                                                   args.target_domain,
+                                                                                   args.num_op,
+                                                                                   args.num_cv,
+                                                                                   args.num_policy, args.num_search,
+                                                                                   args.random_range,
+                                                                                   args.use_emd_false)):
+            aug_load = torch.load(
+                'aug_final/{0}_{1}2{2}_op{3}_ncv{4}_npy{5}_ns{6}_rnd{7:0.2f}_{8}.pth'.format(args.dc_model, args.source_domain,
+                                                                                   args.target_domain,
+                                                                                   args.num_op,
+                                                                                   args.num_cv,
+                                                                                   args.num_policy, args.num_search,
+                                                                                   args.random_range,
+                                                                                   args.use_emd_false))
+        elif os.path.isfile(
                 'aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}_{}.pth'.format(args.dc_model, args.source_domain,
                                                                          args.target_domain,
                                                                          args.num_op,
                                                                          args.num_cv,
                                                                          args.num_policy, args.num_search,
-                                                                         args.use_emd)):
+                                                                         args.use_emd_false)):
             aug_load = torch.load(
-                'aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(args.dc_model, args.source_domain,
-                                                                      args.target_domain,
-                                                                      args.num_op,
-                                                                      args.num_cv,
-                                                                      args.num_policy, args.num_search, args.use_emd))
+                'aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}_{}.pth'.format(args.dc_model, args.source_domain,
+                                                                         args.target_domain,
+                                                                         args.num_op,
+                                                                         args.num_cv,
+                                                                         args.num_policy, args.num_search,
+                                                                         args.use_emd_false))
         elif os.path.isfile(
                 'aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(args.dc_model, args.source_domain,
                                                                       args.target_domain,
@@ -60,7 +77,7 @@ def train(args, logger):
                                                                  args.num_op,
                                                                  args.num_cv,
                                                                  args.num_policy))
-        aug = Augmentation(aug_load['final_policy'])
+        aug = Augmentation(aug_load['final_policy'], deterministic=args.trs_deter, random_range=args.random_range)
 
     # Dataset
     source_trainset = PointDA(root=args.data_dir, domain=args.source_domain, partition='train',

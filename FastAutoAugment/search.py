@@ -94,7 +94,7 @@ def eval_tta(config, augment, reporter):
                                                               cv_ratio_test,
                                                               cv_num,
                                                               split_idx=cv_fold,
-                                                              target=False)
+                                                              target=False, random_range=C.get()['args'].random_range)
 
         src_loaders.append(iter(src_validloader))
         del src_tl, src_ttl
@@ -116,7 +116,7 @@ def eval_tta(config, augment, reporter):
 
             pred = model(trans_pc)
 
-            if C.get()['args'].use_emd:
+            if C.get()['args'].use_emd_false:
                 loss_emd = (torch.mean(
                     emd_loss(point_cloud.permute(0, 2, 1), trans_pc.permute(0, 2, 1), 0.05, 3000)[0])) * 10000
             else:
@@ -166,12 +166,12 @@ if __name__ == '__main__':
                         choices=['pointnet', 'pointnetv5', 'pointnetv7'])
     parser.add_argument('--topk', type=int, default=8)
     parser.add_argument('--decay', type=float, default=-1)
+    parser.add_argument('--random_range', type=float, default=0.3)
     parser.add_argument('--per-class', action='store_true')
     parser.add_argument('--resume', action='store_true')
-    parser.add_argument('--use_emd', action='store_false')
+    parser.add_argument('--use_emd_false', action='store_false')
     parser.add_argument('--smoke-test', action='store_true')
     args = parser.parse_args()
-
 
     if args.decay > 0:
         logger.info('decay=%.4f' % args.decay)
@@ -300,8 +300,12 @@ if __name__ == '__main__':
 
     searched_dict['final_policy'] = final_policy_set
     torch.save(searched_dict,
-               './aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}_{}.pth'.format(args.dc_model, C.get()['source'],
-                                                                       C.get()['target'],
-                                                                       args.num_op, args.num_cv,
-                                                                       args.num_policy, args.num_search, args.use_emd),
+               './aug_final/{0}_{1}2{2}_op{3}_ncv{4}_npy{5}_ns{6}_rnd{7:0.2f}_{8}.pth'.format(args.dc_model,
+                                                                                              C.get()['source'],
+                                                                                              C.get()['target'],
+                                                                                              args.num_op, args.num_cv,
+                                                                                              args.num_policy,
+                                                                                              args.num_search,
+                                                                                              args.random_range,
+                                                                                              args.use_emd_false),
                _use_new_zipfile_serialization=False)
