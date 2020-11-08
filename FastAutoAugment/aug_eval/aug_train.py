@@ -30,6 +30,19 @@ def train(args, logger):
         aug = Augmentation(aug_load)
     else:
         if os.path.isfile(
+                'aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}_{}.pth'.format(args.dc_model, args.source_domain,
+                                                                         args.target_domain,
+                                                                         args.num_op,
+                                                                         args.num_cv,
+                                                                         args.num_policy, args.num_search,
+                                                                         args.use_emd)):
+            aug_load = torch.load(
+                'aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(args.dc_model, args.source_domain,
+                                                                      args.target_domain,
+                                                                      args.num_op,
+                                                                      args.num_cv,
+                                                                      args.num_policy, args.num_search, args.use_emd))
+        elif os.path.isfile(
                 'aug_final/{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(args.dc_model, args.source_domain,
                                                                       args.target_domain,
                                                                       args.num_op,

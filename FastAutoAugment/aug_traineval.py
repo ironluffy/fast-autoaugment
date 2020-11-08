@@ -33,6 +33,7 @@ if __name__ == '__main__':
     parser.add_argument('--tag', type=str, default=datetime.now().strftime('%Y%m%d_%H%M%S'))
     parser.add_argument('--aug_all', action='store_true')
     parser.add_argument('--only_eval', action='store_true')
+    parser.add_argument('--use_emd', action='store_false')
     parser.add_argument('--model', type=str, default='pointnet')
 
     args = parser.parse_args()
