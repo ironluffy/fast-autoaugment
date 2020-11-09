@@ -291,34 +291,28 @@ def sparse(point_clouds, level=0.6, random_range=0.3):
 def global_sparse(point_clouds, level=0.6, random_range=0.3):
     B, C, N = point_clouds.shape
     device = point_clouds.device
+    level = 1.0 - level
     min_param = level * (0.9 - random_range) + 0.1
     augmented_point_clouds = torch.zeros([0], dtype=torch.float32, device=device)
-
     lam = torch.FloatTensor(B, 1).uniform_(min_param, min_param + random_range).to(device)
-    num_pts_a = N - torch.round(lam * N)
-    num_pts_b = torch.round(lam * N)
-
+    num_pts_a = torch.round(lam * N)
+    num_pts_b = N - torch.round(lam * N)
     for idx in range(B):
         if num_pts_a[idx] == N:
-            point_cloud = point_clouds[idx, :]
+            point_cloud = point_clouds[idx, :].unsqueeze(0)
             augmented_point_clouds = torch.cat([augmented_point_clouds, point_cloud], dim=0)
             continue
-
         temp_point_cloud = torch.zeros([0], dtype=torch.float32, device=device)
         part_point_cloud, _ = pcu.random_point_sample(point_clouds[idx, :].unsqueeze(0), int(num_pts_a[idx]))
-
         while True:
             temp_point_cloud = torch.cat([temp_point_cloud, part_point_cloud], dim=2)
             if temp_point_cloud.size(-1) > num_pts_b[idx]:
                 break
-
         temp_point_cloud, _ = pcu.random_point_sample(temp_point_cloud, int(num_pts_b[idx]))
         point_cloud = torch.cat([temp_point_cloud, part_point_cloud], dim=2)
         point_cloud = pcu.point_permutate(point_cloud)
         augmented_point_clouds = torch.cat([augmented_point_clouds, point_cloud], dim=0)
-
     augmented_point_clouds = pcu.normalize(augmented_point_clouds)
-
     return augmented_point_clouds
 
 
