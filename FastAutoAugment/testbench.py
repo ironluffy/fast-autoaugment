@@ -10,15 +10,23 @@ if __name__ == "__main__":
     root = 'aug_final'
     src_domain = 'modelnet'
     trg_domain = 'shapenet'
-    dc_model = 'pointnet'
+    dc_model = 'pointnetv7'
     num_op = 3
     num_cv = 1
-    num_policy = 10
-    num_search = 200
+    rnd_range = 0.1
+    num_policy = 20
+    num_search = 100
+    use_emd_fale = True
     policy_path = os.path.join(root,
-                               '{}_{}2{}_op{}_ncv{}_npy{}_ns{}.pth'.format(dc_model, src_domain, trg_domain, num_op,
-                                                                           num_cv, num_policy, num_search))
-    policies = torch.load(policy_path)
+                               '{0}_{1}2{2}_op{3}_ncv{4}_npy{5}_ns{6}_rnd{7:0.2f}_{8}.pth'.format(dc_model, src_domain,
+                                                                                                  trg_domain, num_op,
+                                                                                                  num_cv, num_policy,
+                                                                                                  num_search,
+                                                                                                  rnd_range,
+                                                                                                  use_emd_fale))
+    load_dict = torch.load(policy_path)
+    policies = load_dict['final_policy']
+    print(load_dict)
     aug_model = Augmentation(policies)
 
     sub_policy_prob_dict = {}
@@ -63,7 +71,7 @@ if __name__ == "__main__":
                     emd_loss(point_clouds.permute(0, 2, 1), trans_pc.permute(0, 2, 1), 0.05, 3000)[0])) * 10000
                 total_emd_loss += loss_emd.item()
 
-    print(total_emd_loss/10000)
+    print(total_emd_loss / 10000)
 
     print(policies)
 

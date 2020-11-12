@@ -107,6 +107,7 @@ def eval_tta(config, augment, reporter):
 
     losses = []
     corrects = []
+    assert len(src_loaders) != 0
     for loader in src_loaders:
         with torch.no_grad():
             data = next(loader)
@@ -117,11 +118,17 @@ def eval_tta(config, augment, reporter):
             pred = model(trans_pc)
 
             if C.get()['args'].use_emd_false:
-                loss_emd = (torch.mean(
-                    emd_loss(point_cloud.permute(0, 2, 1), trans_pc.permute(0, 2, 1), 0.05, 3000)[0])) * 10000
+                loss_emd = (torch.mean(emd_loss(point_cloud.permute(0, 2, 1),
+                                                trans_pc.permute(0, 2, 1), 0.05, 3000)[0])).unsqueeze(0) * C.get()[
+                               'args'].emd_coeff
             else:
-                loss_emd = 0
-            loss = loss_fn(pred, label) + loss_emd
+                loss_emd = torch.tensor([0.0])
+
+            if C.get()['args'].no_dc:
+                loss = loss_emd
+            else:
+                loss = loss_emd + loss_fn(pred, label)
+            # print(loss)
             losses.append(loss.detach().cpu().numpy())
 
             pred = pred.max(dim=1)[1]
@@ -165,10 +172,12 @@ if __name__ == '__main__':
     parser.add_argument('--dc_model', type=str, default='pointnetv7',
                         choices=['pointnet', 'pointnetv5', 'pointnetv7'])
     parser.add_argument('--topk', type=int, default=8)
+    parser.add_argument('--emd_coeff', type=int, default=10)
     parser.add_argument('--decay', type=float, default=-1)
     parser.add_argument('--random_range', type=float, default=0.3)
     parser.add_argument('--per-class', action='store_true')
     parser.add_argument('--resume', action='store_true')
+    parser.add_argument('--no_dc', action='store_true')
     parser.add_argument('--use_emd_false', action='store_false')
     parser.add_argument('--smoke-test', action='store_true')
     args = parser.parse_args()
@@ -299,13 +308,32 @@ if __name__ == '__main__':
                 final_policy_set.extend(final_policy)
 
     searched_dict['final_policy'] = final_policy_set
-    torch.save(searched_dict,
-               './aug_final/{0}_{1}2{2}_op{3}_ncv{4}_npy{5}_ns{6}_rnd{7:0.2f}_{8}.pth'.format(args.dc_model,
-                                                                                              C.get()['source'],
-                                                                                              C.get()['target'],
-                                                                                              args.num_op, args.num_cv,
-                                                                                              args.num_policy,
-                                                                                              args.num_search,
-                                                                                              args.random_range,
-                                                                                              args.use_emd_false),
-               _use_new_zipfile_serialization=False)
+    if args.no_dc:
+        os.makedirs('./aug_final_ablated', exist_ok=True)
+        torch.save(searched_dict,
+                   './aug_final_ablated/{0}_{1}2{2}_op{3}_ncv{4}_npy{5}_ns{6}_rnd{7:0.2f}_{8}.pth'.format(args.dc_model,
+                                                                                                          C.get()[
+                                                                                                              'source'],
+                                                                                                          C.get()[
+                                                                                                              'target'],
+                                                                                                          args.num_op,
+                                                                                                          args.num_cv,
+                                                                                                          args.num_policy,
+                                                                                                          args.num_search,
+                                                                                                          args.random_range,
+                                                                                                          args.use_emd_false),
+                   _use_new_zipfile_serialization=False)
+    else:
+        os.makedirs('./aug_final_emd{0:2.0f}_{1}'.format(args.emd_coeff, args.dc_model))
+        torch.save(searched_dict,
+                   './aug_final_emd{2.0f}_{0}/{0}_{1}2{2}_op{3}_ncv{4}_npy{5}_ns{6}_rnd{7:0.2f}_{8}.pth'.format(
+                       args.dc_model,
+                       C.get()['source'],
+                       C.get()['target'],
+                       args.num_op,
+                       args.num_cv,
+                       args.num_policy,
+                       args.num_search,
+                       args.random_range,
+                       args.use_emd_false),
+                   _use_new_zipfile_serialization=False)
