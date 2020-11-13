@@ -119,8 +119,8 @@ def eval_tta(config, augment, reporter):
 
             if C.get()['args'].use_emd_false:
                 loss_emd = (torch.mean(emd_loss(point_cloud.permute(0, 2, 1),
-                                                trans_pc.permute(0, 2, 1), 0.05, 3000)[0])).unsqueeze(0) * C.get()[
-                               'args'].emd_coeff
+                                                trans_pc.permute(0, 2, 1), 0.05, 3000)[0])).unsqueeze(0) \
+                           * C.get()['args'].emd_coeff
             else:
                 loss_emd = torch.tensor([0.0])
 
@@ -324,7 +324,7 @@ if __name__ == '__main__':
                                                                                                           args.use_emd_false),
                    _use_new_zipfile_serialization=False)
     else:
-        os.makedirs('./aug_final_emd{0:2.0f}_{1}'.format(args.emd_coeff, args.dc_model))
+        os.makedirs('./aug_final_emd{0:2.0f}_{1}'.format(args.emd_coeff, args.dc_model), exist_ok=True)
         torch.save(searched_dict,
                    './aug_final_emd{2.0f}_{0}/{0}_{1}2{2}_op{3}_ncv{4}_npy{5}_ns{6}_rnd{7:0.2f}_{8}.pth'.format(
                        args.dc_model,
