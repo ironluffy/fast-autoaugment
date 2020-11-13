@@ -326,7 +326,7 @@ if __name__ == '__main__':
     else:
         os.makedirs('./aug_final_emd{0:2.0f}_{1}'.format(args.emd_coeff, args.dc_model), exist_ok=True)
         torch.save(searched_dict,
-                   './aug_final_emd{2.0f}_{0}/{0}_{1}2{2}_op{3}_ncv{4}_npy{5}_ns{6}_rnd{7:0.2f}_{8}.pth'.format(
+                   './aug_final_emd{9:2.0f}_{0}/{0}_{1}2{2}_op{3}_ncv{4}_npy{5}_ns{6}_rnd{7:0.2f}_{8}.pth'.format(
                        args.dc_model,
                        C.get()['source'],
                        C.get()['target'],
@@ -335,5 +335,5 @@ if __name__ == '__main__':
                        args.num_policy,
                        args.num_search,
                        args.random_range,
-                       args.use_emd_false),
+                       args.use_emd_false, args.emd_coeff),
                    _use_new_zipfile_serialization=False)
