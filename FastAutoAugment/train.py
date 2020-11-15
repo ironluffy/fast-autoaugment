@@ -149,12 +149,20 @@ def train_and_eval(tag, dataroot, test_ratio=0.0, cv_num=5, cv_fold=0, reporter=
                                                                                           multinode=(local_rank >= 0),
                                                                                           target=False)
 
-    trg_trainsampler, trg_trainloader, trg_validloader, trg_testloader_ = get_dataloaders(C.get()['dataset'],
-                                                                                          C.get()['batch'],
-                                                                                          dataroot, test_ratio, cv_num,
-                                                                                          split_idx=cv_fold,
-                                                                                          multinode=(local_rank >= 0),
-                                                                                          target=True)
+    if C.get()['args'].ideal_dc is not None:
+        trg_trainsampler, trg_trainloader, trg_validloader, trg_testloader_ \
+            = get_dataloaders(C.get()['dataset'], C.get()['batch'], dataroot, test_ratio,
+                              cv_num, split_idx=cv_fold, multinode=(local_rank >= 0), target=False,
+                              transform = C.get()['args'].ideal_dc)
+    else:
+        trg_trainsampler, trg_trainloader, trg_validloader, trg_testloader_ = get_dataloaders(C.get()['dataset'],
+                                                                                              C.get()['batch'],
+                                                                                              dataroot, test_ratio,
+                                                                                              cv_num,
+                                                                                              split_idx=cv_fold,
+                                                                                              multinode=(
+                                                                                                      local_rank >= 0),
+                                                                                              target=True)
 
     # create a model & an optimizer
     model = get_model(C.get()['model'], 2, local_rank=local_rank)

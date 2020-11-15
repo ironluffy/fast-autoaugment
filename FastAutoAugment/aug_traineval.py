@@ -37,6 +37,8 @@ if __name__ == '__main__':
     parser.add_argument('--only_eval', action='store_true')
     parser.add_argument('--use_emd_false', action='store_false')
     parser.add_argument('--model', type=str, default='pointnet')
+    parser.add_argument('--emd_coeff', type=int, default=10)
+    parser.add_argument('--ablated', type=str, choices=['dc', 'emd'])
 
     args = parser.parse_args()
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -50,10 +52,13 @@ if __name__ == '__main__':
                                                                            args.target_domain))
     else:
         args.save_dir = os.path.join(args.save_dir,
-                                     '{}_{}_{}_op{}_ncv{}_npy{}_{}'.format(args.model, args.source_domain,
-                                                                           args.target_domain,
-                                                                           args.num_op, args.num_cv,
-                                                                           args.num_policy, args.tag))
+                                     'emd{0:2.0f}_{1}_{2}_{3}_op{4}_ncv{5}_npy{6}_{7}'.format(args.emd_coeff,
+                                                                                              args.model,
+                                                                                              args.source_domain,
+                                                                                              args.target_domain,
+                                                                                              args.num_op, args.num_cv,
+                                                                                              args.num_policy,
+                                                                                              args.tag))
     logger = ExperimentLogger(args.save_dir, exist_ok=True)
 
     random.seed(int(args.tag))

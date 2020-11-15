@@ -15,7 +15,7 @@ logger.setLevel(logging.INFO)
 
 
 def get_dataloaders(dataset, batch, dataroot, split=0.15, cv_num=5, split_idx=0, multinode=False, target_lb=-1,
-                    target=False, random_range=0.3):
+                    target=False, random_range=0.3, transform=None):
     if 'pointda':
         transform_train = []
         transform_test = []
@@ -28,7 +28,17 @@ def get_dataloaders(dataset, batch, dataroot, split=0.15, cv_num=5, split_idx=0,
         transform_train.append(Augmentation(C.get()['aug'], random_range=random_range))
     else:
         logger.debug('augmentation: %s' % C.get()['aug'])
-
+        if C.get()['args'].ideal_dc is not None:
+            if C.get()['args'].ideal_dc == 'sparse':
+                aug_list = [[('random_crop_plane', 0.4, 0.4)]]
+            elif C.get()['args'].ideal_dc == 'rc_plane':
+                aug_list = [[('random_crop_plane', 0.5, 0.5)]]
+            elif C.get()['args'].ideal_dc == 'rc_sphere':
+                aug_list = [[('random_crop_sphere', 0.5, 0.5)]]
+            else:
+                raise NotImplementedError
+            synth_aug = Augmentation(aug_list, random_range=0.1)
+            transform_train.append(synth_aug)
         if C.get()['aug'] in ['default']:
             pass
         else:

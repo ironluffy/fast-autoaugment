@@ -7,14 +7,14 @@ from utils.emd.emd_module import emdModule
 from aug_eval.aug_train import Augmentation
 
 if __name__ == "__main__":
-    root = 'aug_final'
-    src_domain = 'modelnet'
-    trg_domain = 'shapenet'
+    root = 'aug_final_rc_plane_pointnetv7'
+    src_domain = 'shapenet'
+    trg_domain = 'scannet'
     dc_model = 'pointnetv7'
-    num_op = 3
+    num_op = 2
     num_cv = 1
     rnd_range = 0.1
-    num_policy = 20
+    num_policy = 5
     num_search = 100
     use_emd_fale = True
     policy_path = os.path.join(root,
@@ -59,19 +59,19 @@ if __name__ == "__main__":
     source_valloader = DataLoader(source_valset, num_workers=0,
                                   batch_size=64)
 
-    emd_loss = emdModule().cuda()
-    total_emd_loss = 0
-    for data in tqdm(source_trainloader):
-        with torch.no_grad():
-            with torch.no_grad():
-                point_clouds = data['point_cloud'].cuda()
-                trans_pc = aug_model(point_clouds)
-
-                loss_emd = (torch.mean(
-                    emd_loss(point_clouds.permute(0, 2, 1), trans_pc.permute(0, 2, 1), 0.05, 3000)[0])) * 10000
-                total_emd_loss += loss_emd.item()
-
-    print(total_emd_loss / 10000)
+    # emd_loss = emdModule().cuda()
+    # total_emd_loss = 0
+    # for data in tqdm(source_trainloader):
+    #     with torch.no_grad():
+    #         with torch.no_grad():
+    #             point_clouds = data['point_cloud'].cuda()
+    #             trans_pc = aug_model(point_clouds)
+    #
+    #             loss_emd = (torch.mean(
+    #                 emd_loss(point_clouds.permute(0, 2, 1), trans_pc.permute(0, 2, 1), 0.05, 3000)[0])) * 10000
+    #             total_emd_loss += loss_emd.item()
+    #
+    # print(total_emd_loss / 10000)
 
     print(policies)
 

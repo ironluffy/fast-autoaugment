@@ -180,6 +180,7 @@ if __name__ == '__main__':
     parser.add_argument('--no_dc', action='store_true')
     parser.add_argument('--use_emd_false', action='store_false')
     parser.add_argument('--smoke-test', action='store_true')
+    parser.add_argument('--ideal_dc', type=str, choices=['sparse', 'rc_plane', 'rc_sphere'])
     args = parser.parse_args()
 
     if args.decay > 0:
@@ -203,10 +204,20 @@ if __name__ == '__main__':
     logger.info('search augmentation policies, dataset=%s model=%s' % (C.get()['dataset'], C.get()['model']['type']))
     logger.info('----- Train without Augmentations cv=%d ratio(test)=%.1f -----' % (cv_num, args.cv_ratio))
     w.start(tag='train_no_aug')
-    paths = [_get_path(C.get()['dataset'], C.get()['model']['type'],
-                       'ratio{:.1f}_fold{}_{}2{}_op{}_ncv{}_npy{}'.format(args.cv_ratio, i, C.get()['source'],
-                                                                          C.get()['target'], args.num_op, args.num_cv,
-                                                                          args.num_policy)) for i in range(cv_num)]
+    if args.ideal_dc:
+        paths = [_get_path(C.get()['dataset'], C.get()['model']['type'],
+                           'ratio{:.1f}_fold{}_{}2{}_op{}_ncv{}_npy{}_ideal_dc'.format(args.cv_ratio, i,
+                                                                                       C.get()['source'],
+                                                                                       C.get()['target'], args.num_op,
+                                                                                       args.num_cv,
+                                                                                       args.num_policy)) for i in
+                 range(cv_num)]
+    else:
+        paths = [_get_path(C.get()['dataset'], C.get()['model']['type'],
+                           'ratio{:.1f}_fold{}_{}2{}_op{}_ncv{}_npy{}'.format(args.cv_ratio, i, C.get()['source'],
+                                                                              C.get()['target'], args.num_op,
+                                                                              args.num_cv,
+                                                                              args.num_policy)) for i in range(cv_num)]
 
     print(paths)
     reqs = [
@@ -322,6 +333,20 @@ if __name__ == '__main__':
                                                                                                           args.num_search,
                                                                                                           args.random_range,
                                                                                                           args.use_emd_false),
+                   _use_new_zipfile_serialization=False)
+    elif args.ideal_dc is not None:
+        os.makedirs('./aug_final_{0}_{1}'.format(args.ideal_dc, args.dc_model), exist_ok=True)
+        torch.save(searched_dict,
+                   './aug_final_{9}_{0}/{0}_{1}2{2}_op{3}_ncv{4}_npy{5}_ns{6}_rnd{7:0.2f}_{8}.pth'.format(
+                       args.dc_model,
+                       C.get()['source'],
+                       C.get()['target'],
+                       args.num_op,
+                       args.num_cv,
+                       args.num_policy,
+                       args.num_search,
+                       args.random_range,
+                       args.use_emd_false, args.ideal_dc),
                    _use_new_zipfile_serialization=False)
     else:
         os.makedirs('./aug_final_emd{0:2.0f}_{1}'.format(args.emd_coeff, args.dc_model), exist_ok=True)
