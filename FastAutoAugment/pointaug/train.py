@@ -19,7 +19,7 @@ from networks.PointNet import PointNetClassification, PointNetClassificationV7
 
 
 def dc_train(args, logger):
-    total_epoch = 100
+    total_epoch = 50
     lr = 1e-3
     weight_decay = 5e-5
     batch_size = args.batch_size
@@ -144,7 +144,7 @@ def dc_train(args, logger):
 
 
 def aug_train(args, logger):
-    total_epoch = 100
+    total_epoch = 50
     lr = 1e-3
     weight_decay = 5e-5
     batch_size = args.batch_size
@@ -235,7 +235,7 @@ def aug_train(args, logger):
             'optimizer': optimizer,
             'scheduler': scheduler,
         }
-        logger.save_checkpoint(checkpoint=save_dict, tag=cur_epoch)
+        # logger.save_checkpoint(checkpoint=save_dict, tag=cur_epoch)
         if val_sample_accuracy > source_best_val_sample_acc:
             source_best_val_sample_acc = val_sample_accuracy
             torch.save(save_dict, os.path.join(logger.save_root, '..', 'pointaug',
@@ -370,7 +370,7 @@ def train(args, logger):
             'optimizer': optimizer,
             'scheduler': scheduler,
         }
-        logger.save_checkpoint(checkpoint=save_dict, tag=cur_epoch)
+        # logger.save_checkpoint(checkpoint=save_dict, tag=cur_epoch)
         if val_sample_accuracy > source_best_val_sample_acc:
             source_best_val_sample_acc = val_sample_accuracy
             logger.save_checkpoint(checkpoint=save_dict, tag='Best_sample_val')
