@@ -49,7 +49,17 @@ if __name__ == '__main__':
 
     if args.aug_all:
         args.save_dir = os.path.join(args.save_dir, 'aug_all_{}_{}_new'.format(args.source_domain,
-                                                                           args.target_domain))
+                                                                               args.target_domain))
+    elif args.ablated == 'dc':
+        args.save_dir = os.path.join(args.save_dir,
+                                     'no_dc_emd{0:2.0f}_{1}_{2}_{3}_op{4}_ncv{5}_npy{6}_{7}'.format(args.emd_coeff,
+                                                                                                    args.model,
+                                                                                                    args.source_domain,
+                                                                                                    args.target_domain,
+                                                                                                    args.num_op,
+                                                                                                    args.num_cv,
+                                                                                                    args.num_policy,
+                                                                                                    args.tag))
     else:
         args.save_dir = os.path.join(args.save_dir,
                                      'emd{0:2.0f}_{1}_{2}_{3}_op{4}_ncv{5}_npy{6}_{7}'.format(args.emd_coeff,
