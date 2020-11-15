@@ -87,17 +87,16 @@ def eval_tta(config, augment, reporter):
     model.eval()
 
     src_loaders = []
-    for _ in range(augment['num_policy']):
-        _, src_tl, src_validloader, src_ttl = get_dataloaders(C.get()['dataset'],
-                                                              C.get()['batch'],
-                                                              augment['dataroot'],
-                                                              cv_ratio_test,
-                                                              cv_num,
-                                                              split_idx=cv_fold,
-                                                              target=False, random_range=C.get()['args'].random_range)
+    # for _ in range(augment['num_policy']):
+    _, src_tl, src_validloader, src_ttl = get_dataloaders(C.get()['dataset'],
+                                                      C.get()['batch'],
+                                                      augment['dataroot'],
+                                                      cv_ratio_test,
+                                                      cv_num,
+                                                      split_idx=cv_fold,
+                                                      target=False, random_range=C.get()['args'].random_range)
 
-        src_loaders.append(iter(src_validloader))
-        del src_tl, src_ttl
+    del src_tl, src_ttl
 
     start_t = time.time()
     metrics = Accumulator()
@@ -107,10 +106,8 @@ def eval_tta(config, augment, reporter):
 
     losses = []
     corrects = []
-    assert len(src_loaders) != 0
-    for loader in src_loaders:
+    for data in src_validloader:
         with torch.no_grad():
-            data = next(loader)
             point_cloud = data['point_cloud'].cuda()
             label = torch.ones_like(data['label'], dtype=torch.int64).cuda()
             trans_pc = data['transformed']
