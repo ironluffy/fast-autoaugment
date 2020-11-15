@@ -14,7 +14,7 @@ if __name__ == "__main__":
     num_op = 2
     num_cv = 1
     rnd_range = 0.1
-    num_policy = 5
+    num_policy = 30
     num_search = 100
     use_emd_fale = True
     policy_path = os.path.join(root,
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     #
     # print(total_emd_loss / 10000)
 
-    print(policies)
+    print(len(policies))
 
     print('prob')
     for key, value in sub_policy_prob_dict.items():
