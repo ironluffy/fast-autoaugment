@@ -48,8 +48,18 @@ if __name__ == '__main__':
     numpy.random.seed(args.random_seed)
 
     if args.aug_all:
-        args.save_dir = os.path.join(args.save_dir, 'aug_all_{}_{}'.format(args.source_domain,
-                                                                           args.target_domain))
+        args.save_dir = os.path.join(args.save_dir, 'aug_all_{}_{}_new'.format(args.source_domain,
+                                                                               args.target_domain))
+    elif args.ablated == 'dc':
+        args.save_dir = os.path.join(args.save_dir,
+                                     'no_dc_emd{0:2.0f}_{1}_{2}_{3}_op{4}_ncv{5}_npy{6}_{7}'.format(args.emd_coeff,
+                                                                                                    args.model,
+                                                                                                    args.source_domain,
+                                                                                                    args.target_domain,
+                                                                                                    args.num_op,
+                                                                                                    args.num_cv,
+                                                                                                    args.num_policy,
+                                                                                                    args.tag))
     else:
         args.save_dir = os.path.join(args.save_dir,
                                      'emd{0:2.0f}_{1}_{2}_{3}_op{4}_ncv{5}_npy{6}_{7}'.format(args.emd_coeff,
@@ -62,7 +72,9 @@ if __name__ == '__main__':
     logger = ExperimentLogger(args.save_dir, exist_ok=True)
 
     random.seed(int(args.tag))
-    all_augment = [random.sample([(fn.__name__, random.random(), random.random()) for fn, v1, v2 in augment_list()], 3)]
+    all_augment = [random.sample([(fn.__name__, random.random(), random.random()) for fn, v1, v2 in augment_list()], 2)
+                   for i in range(200)]
+    print(len(all_augment))
     args.all_augment = all_augment
     logger.save_args(args)
 

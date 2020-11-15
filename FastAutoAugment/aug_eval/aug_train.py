@@ -28,6 +28,19 @@ def train(args, logger):
     if args.aug_all:
         aug_load = args.all_augment
         aug = Augmentation(aug_load, deterministic=args.trs_deter, random_range=args.random_range)
+    elif args.ablated == 'dc':
+        aug_load = torch.load(
+            './aug_final_ablated/{0}_{1}2{2}_op{3}_ncv{4}_npy{5}_ns{6}_rnd{7:0.2f}_{8}.pth'.format(
+                args.dc_model,
+                args.source_domain,
+                args.target_domain,
+                args.num_op,
+                args.num_cv,
+                args.num_policy,
+                args.num_search,
+                args.random_range,
+                args.use_emd_false, args.emd_coeff))
+        aug = Augmentation(aug_load['final_policy'], deterministic=args.trs_deter, random_range=args.random_range)
     else:
         # if os.path.isfile(
         #         'aug_final_emd{9:2.0f}_{0}/{0}_{1}2{2}_op{3}_ncv{4}_npy{5}_ns{6}_rnd{7:0.2f}_{8}.pth'.format(
