@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 from .test import test_model
 from .dc_test import dc_test_model
 from .aug_test import aug_test_model
-from networks.DGCNN.DGCNN import DGCNNClassification
+from networks.DGCNN.DGCNN import DGCNN as DGCNNClassification
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from networks.PointNet import PointNetClassification, PointNetClassificationV7
 
